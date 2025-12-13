@@ -1,24 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BudgetTable } from './budget-table';
-// Transaction type is defined in budget-store.ts
-// budget-table.ts imports from '../store/budget.store' which may be a typo
-// Using the correct import from budget-store
-import type { Transaction } from '../store/budget-store';
+import type { Transaction } from '../store/budget.store';
 
 describe('BudgetTable', () => {
     let element: BudgetTable;
     const mockTransactions: Transaction[] = [
         {
+            id: 1,
             date: '2024-01-15',
             category: 'Cloud',
             amount: 100,
-            description: 'AWS Service'
+            description: 'AWS Service',
+            type: 'expense'
         },
         {
+            id: 2,
             date: '2024-01-16',
             category: 'Infrastructure',
             amount: 200,
-            description: 'Server Hosting'
+            description: 'Server Hosting',
+            type: 'expense'
         }
     ];
 

@@ -1,39 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel
-from typing import List, Dict
-from src.interface.dependencies import get_db, get_current_user
-from src.domain.user import User
 from src.application.ai_chat_service import AIChatService
+from src.infrastructure.repository import SQLBudgetRepository
+from src.infrastructure.db import get_session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(tags=["AI Chat"])
+from src.interface.dependencies import get_current_user
+from src.interface.envelope import ResponseEnvelope
 
-class ChatRequest(BaseModel):
+router = APIRouter()
+
+class AIChatRequest(BaseModel):
     message: str
-    conversation_history: List[Dict[str, str]] = []
+    context: dict = {}
 
-class ChatResponse(BaseModel):
+class AIChatResponse(BaseModel):
     response: str
 
-@router.post("/ai/chat", response_model=ChatResponse)
-async def chat(
-    request: ChatRequest,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+async def get_ai_service(session: AsyncSession = Depends(get_session)):
+    repo = SQLBudgetRepository(session)
+    return AIChatService(repo)
+
+@router.post("/ai/chat", response_model=ResponseEnvelope[AIChatResponse])
+async def chat_with_ai(
+    request: AIChatRequest,
+    service: AIChatService = Depends(get_ai_service),
+    user: dict = Depends(get_current_user)
 ):
-    """
-    AI Chat endpoint that provides contextually aware responses about user's budget data.
-    """
-    try:
-        service = AIChatService(db, user)
-        response = await service.generate_response(
-            request.message,
-            request.conversation_history
-        )
-        return ChatResponse(response=response)
-    except Exception as e:
-        import structlog
-        logger = structlog.get_logger()
-        logger.exception("ai_chat_error", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to generate AI response: {str(e)}")
+    response = await service.process_message(request.message, request.context)
+    return ResponseEnvelope.success(data=AIChatResponse(response=response))
 

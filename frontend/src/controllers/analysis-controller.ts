@@ -113,7 +113,11 @@ export class AnalysisController implements ReactiveController {
         }
     }
 
+
+
+
     private getStandardViewData(viewMode: string, metrics: BudgetMetrics): { data: BreakdownDict; allMerchants: Merchant[]; isDrillDown: boolean } {
+        // Convert top_merchants (Record<string, number>) to Merchant[]
         let allMerchants: Merchant[] = Object.entries(metrics.top_merchants || {}).map(([name, amount]) => ({ name, amount: Number(amount) })).sort((a, b) => b.amount - a.amount);
         let data: BreakdownDict = viewMode === 'project' ? metrics.project_breakdown : metrics.category_breakdown;
         let isDrillDown = false;

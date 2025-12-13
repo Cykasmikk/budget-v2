@@ -29,12 +29,11 @@ describe('AnalysisSidebar', () => {
     });
 
     it('should render analysis sidebar', () => {
-        const sidebar = element.shadowRoot?.querySelector(':host');
         expect(element).toBeTruthy();
     });
 
     it('should display merchants list', () => {
-        element.merchants = [['AWS', 200], ['Azure', 100]];
+        element.merchants = [{ name: 'AWS', amount: 200 }, { name: 'Azure', amount: 100 }];
         element.requestUpdate();
         
         const merchantsList = element.shadowRoot?.querySelector('.merchants-list');
@@ -42,7 +41,7 @@ describe('AnalysisSidebar', () => {
     });
 
     it('should display merchant items', async () => {
-        element.merchants = [['AWS', 2000], ['Azure', 1000]];
+        element.merchants = [{ name: 'AWS', amount: 2000 }, { name: 'Azure', amount: 1000 }];
         await element.updateComplete;
         
         const merchantItems = element.shadowRoot?.querySelectorAll('.merchant-item');
@@ -50,7 +49,7 @@ describe('AnalysisSidebar', () => {
     });
 
     it('should format merchant amounts correctly', async () => {
-        element.merchants = [['AWS', 2000]];
+        element.merchants = [{ name: 'AWS', amount: 2000 }];
         await element.updateComplete;
         
         const merchantItem = element.shadowRoot?.querySelector('.merchant-item');

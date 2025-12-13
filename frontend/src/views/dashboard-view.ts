@@ -106,8 +106,9 @@ export class DashboardView extends LitElement {
     @media (min-width: 3840px) {
       .grid-dashboard {
         max-width: 4000px;
-        gap: 2rem;
-        padding: 2rem;
+        gap: 3rem;
+        padding: 3rem;
+        font-size: 1.25rem; /* Scale text for 4K */
       }
     }
   `;

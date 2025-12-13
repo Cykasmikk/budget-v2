@@ -1,13 +1,14 @@
 import { html, css, TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { BaseComponent } from '../../base-component';
+import { Merchant } from '../../../types/interfaces';
 
 @customElement('analysis-sidebar')
 export class AnalysisSidebar extends BaseComponent {
   @property({ type: Object }) metrics: any = {};
   @property({ type: String }) viewMode: string = 'category';
   @property({ type: String }) selectedCategory: string | null = null;
-  @property({ type: Array }) merchants: Array<[string, number]> = [];
+  @property({ type: Array }) merchants: Merchant[] = [];
   @property({ type: Number }) forecastMonths: number = 6;
   @property({ type: Boolean }) showForecast: boolean = false;
 
@@ -18,11 +19,35 @@ export class AnalysisSidebar extends BaseComponent {
         display: flex;
         flex-direction: column;
         width: 280px;
-        height: 100%; /* Ensure it fills parent */
-        min-height: 0; /* Allow shrinking */
+        height: 100%;
+        min-height: 0;
         border-left: 1px solid var(--color-border);
         padding-left: 1.25rem;
         overflow-y: auto;
+      }
+
+      /* Mobile */
+      @media (max-width: 767px) {
+        :host {
+          width: 100%;
+          height: auto;
+          max-height: 300px; /* Limit height on mobile */
+          border-left: none;
+          border-top: 1px solid var(--color-border);
+          padding-left: 0;
+          padding-top: 1rem;
+        }
+      }
+
+      /* 4K */
+      @media (min-width: 3840px) {
+        :host {
+          width: 450px;
+          padding-left: 2rem;
+        }
+        .merchant-name { font-size: 1.25rem; }
+        .merchant-amount { font-size: 1.25rem; }
+        h3 { font-size: 1.25rem; margin-bottom: 1.5rem; }
       }
       
       .merchants-list {
@@ -78,14 +103,15 @@ export class AnalysisSidebar extends BaseComponent {
     const otherMerchants = safeMerchants.slice(topCount);
     
     const otherTotal = otherMerchants.reduce((sum, item) => {
-        if (Array.isArray(item) && item.length > 1) {
-             return sum + (item[1] as number);
+        if (item && typeof item.amount === 'number') {
+             return sum + item.amount;
         }
         return sum;
     }, 0);
     
-    const displayList = [...topMerchants];
-    if (otherTotal > 0) displayList.push(['Others', otherTotal]);
+    // We construct a Merchant object for 'Others' if needed for consistency in mapping
+    const displayList: Merchant[] = [...topMerchants];
+    if (otherTotal > 0) displayList.push({ name: 'Others', amount: otherTotal });
 
     return html`
       <h3>
@@ -93,11 +119,11 @@ export class AnalysisSidebar extends BaseComponent {
       </h3>
       <div class="merchants-list">
          ${displayList.map((item) => {
-           if (!Array.isArray(item) || item.length < 2) return '';
-           const [merchant, amount] = item as [string, number];
+           if (!item || !item.name) return '';
+           const { name, amount } = item;
            return html`
-           <div class="merchant-item" style="${merchant === 'Others' ? 'font-style: italic; opacity: 0.7;' : ''}">
-             <span class="merchant-name" title="${merchant}">${merchant}</span>
+           <div class="merchant-item" style="${name === 'Others' ? 'font-style: italic; opacity: 0.7;' : ''}">
+             <span class="merchant-name" title="${name}">${name}</span>
              <span class="merchant-amount">$${(amount as number).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
            </div>
          `;

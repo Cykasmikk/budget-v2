@@ -37,7 +37,6 @@ describe('AppShell', () => {
     });
 
     it('should render app shell', () => {
-        const shell = element.shadowRoot?.querySelector(':host');
         expect(element).toBeTruthy();
     });
 
@@ -55,7 +54,7 @@ describe('AppShell', () => {
         const navSpy = vi.fn();
         element.addEventListener('nav-change', navSpy);
         
-        element.handleNavClick('files');
+        (element as any).handleNavClick('files');
         
         expect(navSpy).toHaveBeenCalledWith(
             expect.objectContaining({

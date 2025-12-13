@@ -1,6 +1,8 @@
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from src.interface.envelope import ResponseEnvelope
 from contextlib import asynccontextmanager
 from src.interface.router import router as api_router
 from src.interface.export_router import router as export_router
@@ -68,6 +70,15 @@ from src.infrastructure.limiter import limiter
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger = structlog.get_logger()
+    logger.error("unhandled_exception", error=str(exc), path=request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content=ResponseEnvelope.error("Internal Server Error").model_dump()
+    )
 
 app.add_middleware(LoggingMiddleware)
 

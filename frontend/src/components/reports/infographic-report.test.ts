@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { InfographicReport } from './infographic-report';
-import { BudgetMetrics } from '../../../store/budget-store';
+import { BudgetMetrics } from '../../store/budget-store';
 
 describe('InfographicReport', () => {
     let element: InfographicReport;

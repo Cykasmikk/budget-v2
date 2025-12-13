@@ -1,6 +1,7 @@
 import secrets
 import uuid
 import bcrypt
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -164,7 +165,8 @@ class AuthService(AuthProvider):
         user = result.scalar_one_or_none()
         
         if not user:
-            hashed = await self.get_password_hash("admin")
+            # Create default admin user
+            hashed = await self.get_password_hash(os.getenv("INITIAL_ADMIN_PASSWORD", "admin"))
             user = UserModel(
                 tenant_id=tenant.id,
                 email="admin@example.com",

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CallbackView } from './callback-view';
-import { authStore } from '../store/auth-store';
 
 describe('CallbackView', () => {
     let element: CallbackView;
@@ -69,7 +68,7 @@ describe('CallbackView', () => {
         await element.connectedCallback();
         await element.updateComplete;
 
-        expect(element.error).toBe('No authorization code found.');
+        expect((element as any).error).toBe('No authorization code found.');
     });
 
     it('should display error message on failed callback', async () => {
@@ -88,7 +87,7 @@ describe('CallbackView', () => {
         await element.connectedCallback();
         await element.updateComplete;
 
-        expect(element.error).toBe('SSO Exchange Failed');
+        expect((element as any).error).toBe('SSO Exchange Failed');
     });
 });
 

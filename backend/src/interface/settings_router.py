@@ -5,7 +5,8 @@ from src.interface.dependencies import get_db, get_current_user
 from src.infrastructure.models import TenantModel
 from src.domain.user import User, UserRole
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, Dict, Any
+from src.interface.envelope import ResponseEnvelope
 
 router = APIRouter(tags=["Settings"])
 
@@ -23,7 +24,15 @@ class AuthConfigUpdate(BaseModel):
     client_secret: str
     issuer_url: str # .well-known discovery base
 
-@router.get("/settings")
+class CombinedSettingsResponse(BaseModel):
+    settings: Dict[str, Any]
+    auth_config: Dict[str, Any]
+
+class AuthConfigResponse(BaseModel):
+    status: str
+    config: Dict[str, Any]
+
+@router.get("/settings", response_model=ResponseEnvelope[CombinedSettingsResponse])
 async def get_settings(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -36,12 +45,12 @@ async def get_settings(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
         
-    return {
-        "settings": tenant.settings,
-        "auth_config": tenant.auth_config
-    } # Return both
+    return ResponseEnvelope.success(data=CombinedSettingsResponse(
+        settings=tenant.settings,
+        auth_config=tenant.auth_config
+    ))
 
-@router.patch("/settings")
+@router.patch("/settings", response_model=ResponseEnvelope[Dict[str, Any]])
 async def update_settings(
     settings_update: SettingsUpdate,
     user: User = Depends(get_current_user),
@@ -63,9 +72,9 @@ async def update_settings(
     tenant.settings = current_settings
     
     await db.commit()
-    return tenant.settings
+    return ResponseEnvelope.success(data=tenant.settings)
 
-@router.patch("/settings/auth")
+@router.patch("/settings/auth", response_model=ResponseEnvelope[AuthConfigResponse])
 async def update_auth_config(
     auth_update: AuthConfigUpdate,
     user: User = Depends(get_current_user),
@@ -100,4 +109,7 @@ async def update_auth_config(
     }
     
     await db.commit()
-    return {"status": "success", "config": tenant.auth_config}
+    return ResponseEnvelope.success(data=AuthConfigResponse(
+        status="success", 
+        config=tenant.auth_config
+    ))

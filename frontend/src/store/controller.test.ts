@@ -48,7 +48,7 @@ describe('StoreController', () => {
     it('should unsubscribe on host disconnected', () => {
         host.connectedCallback();
         
-        const updateSpy = vi.spyOn(host, 'requestUpdate');
+        vi.spyOn(host, 'requestUpdate');
         
         host.disconnectedCallback();
         store.setState({ count: 2 });

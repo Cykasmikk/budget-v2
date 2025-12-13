@@ -58,7 +58,10 @@ export class AnalysisCard extends BaseComponent {
       /* 4K (3840px+) */
       @media (min-width: 3840px) {
         .content {
-          gap: 2rem;
+          gap: 3rem;
+        }
+        .chart-container {
+            min-height: 600px; /* Larger chart for 4K */
         }
       }
 

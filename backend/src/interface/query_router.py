@@ -1,25 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from typing import Any, Dict, List
 from src.application.query_budget import QueryBudgetUseCase
 from src.infrastructure.repository import SQLBudgetRepository
 from src.infrastructure.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.interface.dependencies import get_current_user
+from src.interface.envelope import ResponseEnvelope
 
 router = APIRouter()
 
 class QueryRequest(BaseModel):
     query: str
 
+class QueryResponse(BaseModel):
+    answer: str
+    type: str
+    data: Dict[str, Any] | List[Any] | None = None
+
 async def get_query_use_case(session: AsyncSession = Depends(get_session)):
     repo = SQLBudgetRepository(session)
     return QueryBudgetUseCase(repo)
 
-@router.post("/query")
+@router.post("/query", response_model=ResponseEnvelope[QueryResponse])
 async def query_budget(
     request: QueryRequest,
     use_case: QueryBudgetUseCase = Depends(get_query_use_case),
     user: dict = Depends(get_current_user)
 ):
-    return await use_case.execute(request.query)
+    result = await use_case.execute(request.query)
+    return ResponseEnvelope.success(data=QueryResponse(**result))

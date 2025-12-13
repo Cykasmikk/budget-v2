@@ -174,6 +174,55 @@ export class AppShell extends LitElement {
       height: 100%;
       position: relative;
     }
+
+    /* Mobile (max 767px) - Bottom Navigation Layout */
+    @media (max-width: 767px) {
+      :host {
+        flex-direction: column-reverse; /* Nav at bottom */
+      }
+
+      aside {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 0.5rem;
+        border-right: none;
+        border-top: 1px solid var(--color-border);
+        flex: 0 0 auto;
+      }
+
+      /* Hide non-nav items in sidebar on mobile for simplicity, or adapt them */
+      .brand, .budget-status, .upload-section {
+        display: none;
+      }
+
+      nav {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-around;
+        margin-bottom: 0;
+      }
+
+      .nav-item {
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.7rem;
+        padding: 0.5rem;
+      }
+    }
+
+    /* 4K (min 3840px) - Scaled Sidebar */
+    @media (min-width: 3840px) {
+      aside {
+        width: 400px;
+        padding: 2rem;
+      }
+      
+      .brand { font-size: 2.5rem; }
+      .nav-item { font-size: 1.5rem; padding: 1rem; }
+      .budget-value { font-size: 2rem; }
+    }
   `;
 
   render() {

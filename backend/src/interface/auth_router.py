@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, Body, Request
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, Body, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.interface.dependencies import get_db
 from src.application.auth_service import AuthService
 from pydantic import BaseModel
 from src.infrastructure.limiter import limiter
 import os
+from typing import Annotated
+from src.interface.envelope import ResponseEnvelope
+from src.domain.user import UserRole
 
 router = APIRouter(tags=["Auth"])
 
@@ -12,11 +15,16 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-@router.post("/auth/login")
+class LoginResponse(BaseModel):
+    message: str
+    user: str
+    role: str
+
+@router.post("/auth/login", response_model=ResponseEnvelope[LoginResponse])
 async def login(
     response: Response,
     creds: LoginRequest,
-    db: AsyncSession = Depends(get_db)
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
     service = AuthService(db)
     
@@ -25,7 +33,11 @@ async def login(
     
     user = await service.authenticate_user(creds.email, creds.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
     session = await service.create_session(user)
     
@@ -40,7 +52,11 @@ async def login(
         max_age=7 * 24 * 60 * 60 # 1 week
     )
     
-    return {"message": "Logged in", "user": user.email, "role": user.role}
+    return ResponseEnvelope.success(data=LoginResponse(
+        message="Logged in", 
+        user=user.email,
+        role=user.role
+    ))
 
 # Rate limit for guest access - configurable via env var
 # Set GUEST_RATE_LIMIT to "0" to disable rate limiting (development only)
@@ -54,7 +70,11 @@ def apply_rate_limit(func):
         return limiter.limit(GUEST_RATE_LIMIT)(func)
     return func
 
-@router.post("/auth/guest")
+class GuestLoginResponse(BaseModel):
+    message: str
+    details: str
+
+@router.post("/auth/guest", response_model=ResponseEnvelope[GuestLoginResponse])
 @apply_rate_limit
 async def guest_login(
     request: Request,
@@ -76,14 +96,21 @@ async def guest_login(
             max_age=24 * 60 * 60 # 24 hours for guest
         )
         
-        return {"message": "Guest access granted", "details": "Ephemeral tenant created with sample data"}
+        return ResponseEnvelope.success(data=GuestLoginResponse(
+            message="Guest access granted", 
+            details="Ephemeral tenant created with sample data"
+        ))
     except Exception as e:
         import structlog
         logger = structlog.get_logger()
         logger.exception("guest_login_failed", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to create guest access: {str(e)}")
 
-@router.get("/auth/me")
+class UserResponse(BaseModel):
+    user: str
+    role: str
+
+@router.get("/auth/me", response_model=ResponseEnvelope[UserResponse])
 async def get_current_user(
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -98,12 +125,18 @@ async def get_current_user(
         response.delete_cookie("session_id")
         raise HTTPException(status_code=401, detail="Invalid session")
         
-    return {"user": user.email, "role": user.role}
+    return ResponseEnvelope.success(data=UserResponse(
+        user=user.email,
+        role=user.role
+    ))
 
-@router.post("/auth/logout")
+class LogoutResponse(BaseModel):
+    message: str
+
+@router.post("/auth/logout", response_model=ResponseEnvelope[LogoutResponse])
 async def logout(response: Response):
     response.delete_cookie("session_id")
-    return {"message": "Logged out"}
+    return ResponseEnvelope.success(data=LogoutResponse(message="Logged out"))
 
 # --- SSO Endpoints ---
 
@@ -111,7 +144,10 @@ class SSOInitRequest(BaseModel):
     callback_url: str # Where frontend wants to return to (usually /auth/callback)
     email: str | None = None # For domain-hinting logic if we had multi-tenant lookup
 
-@router.post("/auth/sso/init")
+class SSOInitResponse(BaseModel):
+    redirect_url: str
+
+@router.post("/auth/sso/init", response_model=ResponseEnvelope[SSOInitResponse])
 async def init_sso(
     request: SSOInitRequest,
     db: AsyncSession = Depends(get_db)
@@ -132,7 +168,7 @@ async def init_sso(
     sso_service = SSOService()
     try:
         redirect_url = await sso_service.generate_login_url(tenant, request.callback_url)
-        return {"redirect_url": redirect_url}
+        return ResponseEnvelope.success(data=SSOInitResponse(redirect_url=redirect_url))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -140,7 +176,7 @@ class SSOCallbackRequest(BaseModel):
     code: str
     callback_url: str
 
-@router.post("/auth/sso/callback")
+@router.post("/auth/sso/callback", response_model=ResponseEnvelope[LoginResponse])
 async def sso_callback(
     payload: SSOCallbackRequest,
     response: Response,
@@ -242,4 +278,8 @@ async def sso_callback(
         max_age=7 * 24 * 60 * 60
     )
 
-    return {"message": "Logged in via SSO", "user": user.email}
+    return ResponseEnvelope.success(data=LoginResponse(
+        message="Logged in via SSO", 
+        user=user.email,
+        role=user.role
+    ))

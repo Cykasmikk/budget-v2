@@ -1,31 +1,36 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
-from src.main import app
 import pandas as pd
+import uuid
 from io import BytesIO
 from datetime import date
-
-from src.infrastructure.db import init_db
-import os
+from src.main import app
+from src.interface.dependencies import get_current_user
+from src.application.context import set_tenant_id
 
 @pytest.mark.asyncio
-async def test_health_check():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        response = await ac.get("/health")
+async def test_health_check(client):
+    response = await client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 @pytest.mark.asyncio
-async def test_upload_and_analysis():
-    # Initialize DB
-    await init_db()
+async def test_upload_and_analysis(client):
+    # Override Auth
+    tenant_id = uuid.uuid4()
+    
+    async def mock_get_current_user():
+        set_tenant_id(tenant_id)
+        return {"id": "test-user", "role": "admin", "tenant_id": str(tenant_id)}
+    
+    app.dependency_overrides[get_current_user] = mock_get_current_user
     
     # Create a dummy Excel file
     df = pd.DataFrame({
         'Date': [date(2025, 1, 1), date(2025, 1, 2)],
         'Category': ['Food', 'Transport'],
         'Amount': [10.50, 5.00],
-        'Description': ['Lunch', 'Bus']
+        'Description': ['Lunch', 'Bus'],
+        'Project': ['Personal', 'Work'] # Added Project column to match schema
     })
     
     file_content = BytesIO()
@@ -33,19 +38,25 @@ async def test_upload_and_analysis():
         df.to_excel(writer, index=False)
     file_content.seek(0)
     
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        # Upload
-        files = {'file': ('test.xlsx', file_content, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-        response = await ac.post("/api/v1/upload", files=files)
-        if response.status_code != 200:
-            assert False, f"Request failed: {response.text}"
-        assert response.status_code == 200
-        assert response.json()['count'] == 2
-        
-        # Analysis
-        response = await ac.get("/api/v1/analysis")
-        assert response.status_code == 200
-        data = response.json()
-        assert data['total_expenses'] == 15.5
-        assert data['category_breakdown']['Food'] == 10.5
-        assert data['category_breakdown']['Transport'] == 5.0
+    # Upload
+    files = [('files', ('test.xlsx', file_content, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))]
+    response = await client.post("/api/v1/upload", files=files)
+    
+    if response.status_code != 200:
+        assert False, f"Request failed: {response.text}"
+    
+    json_resp = response.json()
+    assert 'data' in json_resp
+    assert json_resp['data']['total_expenses'] == 15.5
+    
+    # Analysis
+    response = await client.get("/api/v1/analysis")
+    assert response.status_code == 200
+    json_resp = response.json()
+    assert 'data' in json_resp
+    data = json_resp['data']
+    assert data['total_expenses'] == 15.5
+    assert data['category_breakdown']['Food'] == 10.5
+    assert data['category_breakdown']['Transport'] == 5.0
+    
+    app.dependency_overrides.pop(get_current_user, None)

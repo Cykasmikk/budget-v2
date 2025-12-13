@@ -1,43 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Body
 from typing import List
+from src.domain.rule import Rule
 from src.application.manage_rules import ManageRulesUseCase
 from src.infrastructure.repository import SQLRuleRepository
 from src.infrastructure.db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.domain.rule import Rule
+
 from src.interface.dependencies import get_current_user
+from src.interface.envelope import ResponseEnvelope
 
 router = APIRouter()
 
-class RuleCreate(BaseModel):
-    pattern: str
-    category: str
-
-async def get_manage_rules_use_case(session: AsyncSession = Depends(get_session)):
+async def get_rule_use_case(session: AsyncSession = Depends(get_session)):
     repo = SQLRuleRepository(session)
     return ManageRulesUseCase(repo)
 
-@router.get("/rules", response_model=List[Rule])
+@router.get("/rules", response_model=ResponseEnvelope[List[Rule]])
 async def get_rules(
-    use_case: ManageRulesUseCase = Depends(get_manage_rules_use_case),
+    use_case: ManageRulesUseCase = Depends(get_rule_use_case),
     user: dict = Depends(get_current_user)
 ):
-    return await use_case.get_rules()
+    rules = await use_case.list_rules()
+    return ResponseEnvelope.success(data=rules)
 
-@router.post("/rules", response_model=Rule)
+@router.post("/rules", response_model=ResponseEnvelope[dict])
 async def add_rule(
-    rule: RuleCreate,
-    use_case: ManageRulesUseCase = Depends(get_manage_rules_use_case),
+    rule: Rule = Body(...),
+    use_case: ManageRulesUseCase = Depends(get_rule_use_case),
     user: dict = Depends(get_current_user)
 ):
-    return await use_case.add_rule(rule.pattern, rule.category)
+    await use_case.add_rule(rule)
+    return ResponseEnvelope.success(data={"status": "ok"})
 
-@router.delete("/rules/{rule_id}")
+@router.delete("/rules/{rule_id}", response_model=ResponseEnvelope[dict])
 async def delete_rule(
     rule_id: int,
-    use_case: ManageRulesUseCase = Depends(get_manage_rules_use_case),
+    use_case: ManageRulesUseCase = Depends(get_rule_use_case),
     user: dict = Depends(get_current_user)
 ):
     await use_case.delete_rule(rule_id)
-    return {"status": "ok"}
+    return ResponseEnvelope.success(data={"status": "ok"})
