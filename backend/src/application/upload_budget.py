@@ -1,31 +1,23 @@
-from typing import Dict, Any
 from src.domain.repository import BudgetRepository
-from src.application.ports import ExcelParser
+from src.infrastructure.excel_parser import ExcelParser
 from src.application.analyze_budget import AnalyzeBudgetUseCase
+from src.domain.analysis_models import BudgetAnalysisResult
 
 class UploadBudgetUseCase:
-    """
-    Use case for uploading and processing a budget Excel file.
-    """
-    
     def __init__(self, repo: BudgetRepository, parser: ExcelParser, analyzer: AnalyzeBudgetUseCase):
         self.repo = repo
         self.parser = parser
         self.analyzer = analyzer
-        
-    async def execute(self, file_content: bytes) -> Dict[str, Any]:
-        """
-        Executes the use case: parse file -> save to repo -> return analysis of THIS file.
-        """
+
+    async def execute(self, file_content: bytes) -> BudgetAnalysisResult:
         entries, warnings = self.parser.parse(file_content)
-        await self.repo.save_bulk(entries)
+        await self.repo.add_all(entries)
         
-        # Analyze ONLY the new entries
-        analysis = await self.analyzer.execute(entries)
+        # Return analysis of the newly updated state
+        result = await self.analyzer.execute()
         
-        # Attach Warnings
-        if isinstance(analysis, dict):
-            analysis['warnings'] = warnings
-            analysis['skipped_count'] = len(warnings)
-            
-        return analysis
+        # Attach upload warnings
+        result.warnings = warnings
+        result.skipped_count = len(warnings)
+        
+        return result

@@ -5,11 +5,14 @@ from src.application.auth_service import AuthService
 from pydantic import BaseModel
 from src.infrastructure.limiter import limiter
 import os
+import secrets
 from typing import Annotated
 from src.interface.envelope import ResponseEnvelope
 from src.domain.user import UserRole
 
 router = APIRouter(tags=["Auth"])
+
+# ... (rest of imports and classes same as before)
 
 class LoginRequest(BaseModel):
     email: str
@@ -150,6 +153,7 @@ class SSOInitResponse(BaseModel):
 @router.post("/auth/sso/init", response_model=ResponseEnvelope[SSOInitResponse])
 async def init_sso(
     request: SSOInitRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db)
 ):
     # In a real multi-tenant app, we would look up Tenant by Domain from email
@@ -167,7 +171,21 @@ async def init_sso(
 
     sso_service = SSOService()
     try:
-        redirect_url = await sso_service.generate_login_url(tenant, request.callback_url)
+        # Generate State
+        state = secrets.token_urlsafe(32)
+        redirect_url = await sso_service.generate_login_url(tenant, request.callback_url, state=state)
+        
+        # Set State Cookie
+        is_secure = os.getenv("SECURE_COOKIES", "False").lower() == "true"
+        response.set_cookie(
+            key="sso_state",
+            value=state,
+            httponly=True,
+            secure=is_secure,
+            samesite="lax",
+            max_age=300 # 5 minutes
+        )
+
         return ResponseEnvelope.success(data=SSOInitResponse(redirect_url=redirect_url))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -175,13 +193,23 @@ async def init_sso(
 class SSOCallbackRequest(BaseModel):
     code: str
     callback_url: str
+    state: str
 
 @router.post("/auth/sso/callback", response_model=ResponseEnvelope[LoginResponse])
 async def sso_callback(
     payload: SSOCallbackRequest,
     response: Response,
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
+    # 0. Verify State (CSRF Protection)
+    cookie_state = request.cookies.get("sso_state")
+    if not cookie_state or not secrets.compare_digest(cookie_state, payload.state):
+         raise HTTPException(status_code=400, detail="Invalid state parameter (Potential CSRF attack)")
+    
+    # Clear state cookie
+    response.delete_cookie("sso_state")
+
     # 1. Look up Tenant (Default Org)
     from sqlalchemy import select
     from src.infrastructure.models import TenantModel, UserModel

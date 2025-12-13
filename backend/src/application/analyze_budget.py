@@ -1,20 +1,23 @@
-from typing import Dict, Any, List
+from typing import Dict, List, Optional
 from decimal import Decimal
-import structlog
+from datetime import date, timedelta
+import pandas as pd
 from src.domain.repository import BudgetRepository
+from src.domain.budget import BudgetEntry
 from src.domain.analysis_models import (
-    BudgetAnalysisResult, TrendEntry
+    BudgetAnalysisResult, 
+    TrendEntry, 
+    GapEntry, 
+    FlashFillSuggestion, 
+    SubscriptionEntry, 
+    AnomalyEntry
 )
-from src.application.analysis_services import (
-    GapDetector, InsightGenerator, ForecastService
-)
-
-logger = structlog.get_logger()
 
 class AnalyzeBudgetUseCase:
     """
-    Use case for analyzing budget data.
-    Refactored to orchestrate specialized services.
+    Use case for analyzing budget data to generate insights, trends, and statistics.
+    Orchestrates various specialized services (GapDetector, InsightGenerator, ForecastService)
+    to produce a comprehensive `BudgetAnalysisResult`.
     """
     
     def __init__(self, repo: BudgetRepository):
@@ -22,7 +25,14 @@ class AnalyzeBudgetUseCase:
         
     def _compute_analysis(self, entries: list) -> BudgetAnalysisResult:
         """
-        Synchronous CPU-bound logic.
+        Performs the heavy CPU-bound analysis logic synchronously.
+        This method is intended to be run in a separate thread to avoid blocking the event loop.
+
+        Args:
+            entries (list): A list of budget entries (models) to analyze.
+
+        Returns:
+            BudgetAnalysisResult: The populated analysis result object containing all insights.
         """
         # 1. Basic Stats
         total_expenses = sum((e.amount for e in entries), Decimal("0"))
@@ -171,8 +181,16 @@ class AnalyzeBudgetUseCase:
 
     async def execute(self, entries: list = None) -> BudgetAnalysisResult:
         """
-        Calculates total expenses and category breakdown.
-        Executes CPU-bound logic in a thread pool to avoid blocking the event loop.
+        Executes the analysis workflow.
+        
+        Fetches data from the repository (if not provided) and runs the computation
+        in a thread pool to ensure non-blocking execution.
+
+        Args:
+            entries (list, optional): Pre-fetched entries to analyze. Defaults to None (fetches all).
+
+        Returns:
+            BudgetAnalysisResult: The complete analysis result.
         """
         if entries is None:
             entries = await self.repo.get_all() # type: ignore

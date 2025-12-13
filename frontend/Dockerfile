@@ -1,10 +1,12 @@
-# Security Gate: Base image minimized
-FROM node:20-alpine as build
+FROM node:20 as build
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 RUN npm install
+
+# No need to remove build-time only dependencies as we use a full node image
+# and the build stage is discarded in the final image anyway.
 
 COPY . .
 RUN npm run build

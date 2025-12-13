@@ -1,7 +1,8 @@
+from uuid import UUID
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, UUID4, EmailStr, ConfigDict
 from enum import Enum
+from typing import Optional
+from pydantic import BaseModel, Field, ConfigDict
 
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -9,15 +10,11 @@ class UserRole(str, Enum):
     VIEWER = "viewer"
 
 class User(BaseModel):
-    """
-    Represents a user in the system.
-    """
-    id: UUID4
-    tenant_id: UUID4
-    email: EmailStr
+    model_config = ConfigDict(strict=True)
+    id: UUID
+    tenant_id: UUID
+    email: str
     role: UserRole
-    hashed_password: Optional[str] = None # Null for SSO users
-    created_at: datetime
+    hashed_password: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)

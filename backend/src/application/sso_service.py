@@ -20,7 +20,7 @@ class SSOService:
             resp.raise_for_status()
             return resp.json()
 
-    async def generate_login_url(self, tenant: TenantModel, callback_url: str) -> str:
+    async def generate_login_url(self, tenant: TenantModel, callback_url: str, state: str) -> str:
         """
         Constructs the OIDC Authorization URL for the given tenant config.
         """
@@ -47,7 +47,7 @@ class SSOService:
             "redirect_uri": callback_url,
             "response_type": "code",
             "scope": "openid email profile",
-            "state": secrets.token_urlsafe(16), # Should store this in session/cookie to verify CSRF
+            "state": state, # Should store this in session/cookie to verify CSRF
             # "nonce": ... (Optional for Code Flow but good for implicit)
         }
         

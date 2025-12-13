@@ -32,9 +32,15 @@ export class CallbackView extends LitElement {
         // Parse URL params
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
+        const state = params.get('state');
 
         if (!code) {
             this.error = 'No authorization code found.';
+            return;
+        }
+
+        if (!state) {
+            this.error = 'No state parameter found (Security check failed).';
             return;
         }
 
@@ -44,6 +50,7 @@ export class CallbackView extends LitElement {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     code: code,
+                    state: state,
                     callback_url: window.location.origin + window.location.pathname // Should typically be just origin + path
                 })
             });
@@ -63,7 +70,7 @@ export class CallbackView extends LitElement {
 
             // Artificial delay for UX
             setTimeout(() => {
-                authStore.loginSuccess({ email: data.user, role: 'viewer' }); // Role will be refreshed from backend /auth/me anyway if we did full session check, but this gets us into dashboard
+                authStore.loginSuccess({ email: data.data.user, role: 'viewer' }); // Role will be refreshed from backend /auth/me anyway if we did full session check, but this gets us into dashboard
             }, 800);
 
         } catch (e: any) {

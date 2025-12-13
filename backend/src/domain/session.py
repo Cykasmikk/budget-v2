@@ -1,17 +1,14 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, UUID4, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
 class Session(BaseModel):
-    """
-    Represents a secure user session.
-    """
-    id: str  # High entropy token
-    user_id: UUID4
-    tenant_id: UUID4
+    model_config = ConfigDict(strict=True)
+    id: str
+    user_id: UUID
+    tenant_id: UUID
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    created_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True)

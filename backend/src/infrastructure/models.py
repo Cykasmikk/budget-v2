@@ -8,6 +8,9 @@ class Base(DeclarativeBase):
     pass
 
 class TenantModel(Base):
+    """
+    SQLAlchemy model for tenants (organizations/accounts).
+    """
     __tablename__ = "tenants"
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
@@ -22,6 +25,9 @@ class TenantModel(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 class UserModel(Base):
+    """
+    SQLAlchemy model for users within a tenant.
+    """
     __tablename__ = "users"
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(Uuid(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -32,6 +38,9 @@ class UserModel(Base):
     last_login = Column(DateTime, nullable=True)
 
 class SessionModel(Base):
+    """
+    SQLAlchemy model for active user sessions.
+    """
     __tablename__ = "sessions"
     id = Column(String, primary_key=True) # Secure token string
     user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False)
@@ -42,6 +51,9 @@ class SessionModel(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class AuditLogModel(Base):
+    """
+    SQLAlchemy model for system audit logs.
+    """
     __tablename__ = "audit_logs"
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(Uuid(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -54,6 +66,9 @@ class AuditLogModel(Base):
     ip_address = Column(String, nullable=True)
 
 class BudgetModel(Base):
+    """
+    SQLAlchemy model for budget transaction entries.
+    """
     __tablename__ = "budget_entries"
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(Uuid(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
@@ -64,6 +79,9 @@ class BudgetModel(Base):
     project = Column(String, nullable=True, default="General")
 
 class RuleModel(Base):
+    """
+    SQLAlchemy model for categorization rules.
+    """
     __tablename__ = "rules"
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(Uuid(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
@@ -71,6 +89,9 @@ class RuleModel(Base):
     category = Column(String, nullable=False)
 
 class GuestUsageStats(Base):
+    """
+    SQLAlchemy model for tracking guest usage statistics (for cleanup/analytics).
+    """
     __tablename__ = "guest_usage_stats"
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     original_tenant_id = Column(String, nullable=False) # Stored as string to survive tenant deletion

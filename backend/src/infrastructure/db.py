@@ -10,5 +10,12 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 # init_db is deprecated in favor of Alembic migrations
 
 async def get_session() -> AsyncSession:
+    """
+    Dependency generator for acquiring an async database session.
+    Yields a session and closes it after use.
+    """
     async with AsyncSessionLocal() as session:
         yield session
+
+# Alias for compatibility if needed (deprecated)
+get_db = get_session

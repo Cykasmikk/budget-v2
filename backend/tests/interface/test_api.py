@@ -47,7 +47,7 @@ async def test_upload_and_analysis(client):
     
     json_resp = response.json()
     assert 'data' in json_resp
-    assert json_resp['data']['total_expenses'] == 15.5
+    assert float(json_resp['data']['total_expenses']) == 15.5
     
     # Analysis
     response = await client.get("/api/v1/analysis")
@@ -55,8 +55,8 @@ async def test_upload_and_analysis(client):
     json_resp = response.json()
     assert 'data' in json_resp
     data = json_resp['data']
-    assert data['total_expenses'] == 15.5
-    assert data['category_breakdown']['Food'] == 10.5
-    assert data['category_breakdown']['Transport'] == 5.0
+    assert float(data['total_expenses']) == 15.5
+    assert float(data['category_breakdown']['Food']) == 10.5
+    assert float(data['category_breakdown']['Transport']) == 5.0
     
     app.dependency_overrides.pop(get_current_user, None)

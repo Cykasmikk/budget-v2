@@ -1,16 +1,14 @@
+from uuid import UUID
 from datetime import datetime
-from typing import Optional, Any
-from pydantic import BaseModel, UUID4, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Dict, Any
 
 class Tenant(BaseModel):
-    """
-    Represents a tenant (organization/account) in the system.
-    All data is scoped to a tenant.
-    """
-    id: UUID4
+    model_config = ConfigDict(strict=True)
+    id: UUID
     name: str
     domain: str
-    auth_config: dict[str, Any] = {}
-    created_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True)
+    auth_config: Dict[str, Any] = {}
+    settings: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

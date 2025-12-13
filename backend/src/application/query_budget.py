@@ -1,12 +1,13 @@
 from typing import List, Dict, Any
 import re
 from src.domain.repository import BudgetRepository
+from src.application.dtos import QueryResultDTO
 
 class QueryBudgetUseCase:
     def __init__(self, repo: BudgetRepository):
         self.repo = repo
 
-    async def execute(self, query: str) -> Dict[str, Any]:
+    async def execute(self, query: str) -> QueryResultDTO:
         """
         Processes a natural language query and returns an answer.
         
@@ -21,11 +22,11 @@ class QueryBudgetUseCase:
         # Intent: Total Spend
         if "total" in query or query == "how much did i spend":
             total = sum(e.amount for e in entries)
-            return {
-                "answer": f"You have spent a total of ${total:,.2f}.",
-                "type": "total",
-                "data": {"total": total}
-            }
+            return QueryResultDTO(
+                answer=f"You have spent a total of ${total:,.2f}.",
+                type="total",
+                data={"total": float(total)}
+            )
             
         # Intent: Spend by Category
         # Look for "on [word]"
@@ -41,11 +42,11 @@ class QueryBudgetUseCase:
                     found = True
             
             if found:
-                return {
-                    "answer": f"You spent ${total:,.2f} on {category}.",
-                    "type": "category",
-                    "data": {"category": category, "total": total}
-                }
+                return QueryResultDTO(
+                    answer=f"You spent ${total:,.2f} on {category}.",
+                    type="category",
+                    data={"category": category, "total": float(total)}
+                )
         
         # Intent: Spend by Merchant
         # Look for "at [word]"
@@ -60,14 +61,14 @@ class QueryBudgetUseCase:
                     found = True
             
             if found:
-                return {
-                    "answer": f"You spent ${total:,.2f} at {merchant}.",
-                    "type": "merchant",
-                    "data": {"merchant": merchant, "total": total}
-                }
+                return QueryResultDTO(
+                    answer=f"You spent ${total:,.2f} at {merchant}.",
+                    type="merchant",
+                    data={"merchant": merchant, "total": float(total)}
+                )
 
-        return {
-            "answer": "I didn't understand that. Try asking 'How much did I spend on Food?' or 'How much at Uber?'",
-            "type": "unknown",
-            "data": {}
-        }
+        return QueryResultDTO(
+            answer="I didn't understand that. Try asking 'How much did I spend on Food?' or 'How much at Uber?'",
+            type="unknown",
+            data={}
+        )

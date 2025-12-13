@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 from decimal import Decimal
 from src.domain.repository import BudgetRepository
 from pydantic import BaseModel
+from src.application.dtos import SimulationResultDTO
 
 class SimulationAdjustment(BaseModel):
     category: str
@@ -11,7 +12,7 @@ class SimulateBudgetUseCase:
     def __init__(self, repo: BudgetRepository):
         self.repo = repo
 
-    async def execute(self, adjustments: List[SimulationAdjustment]) -> Dict[str, Any]:
+    async def execute(self, adjustments: List[SimulationAdjustment]) -> SimulationResultDTO:
         entries = await self.repo.get_all()
         
         # Calculate current baseline
@@ -34,9 +35,12 @@ class SimulateBudgetUseCase:
         
         simulated_total = sum(simulated_category_totals.values())
         
-        return {
-            "current_total": current_total,
-            "simulated_total": simulated_total,
-            "savings": current_total - simulated_total,
-            "breakdown": simulated_category_totals
-        }
+        # Convert Decimals to floats for DTO
+        breakdown_float = {k: float(v) for k, v in simulated_category_totals.items()}
+        
+        return SimulationResultDTO(
+            current_total=float(current_total),
+            simulated_total=float(simulated_total),
+            savings=float(current_total - simulated_total),
+            breakdown=breakdown_float
+        )
