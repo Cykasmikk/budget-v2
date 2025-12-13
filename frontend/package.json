@@ -1,0 +1,31 @@
+{
+  "name": "budget-dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@tanstack/router": "^0.0.1-beta.53",
+    "@tanstack/store": "0.8.0",
+    "chart.js": "4.5.1",
+    "lit": "3.3.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "7.1.1",
+    "@typescript-eslint/parser": "7.1.1",
+    "canvas": "^3.2.0",
+    "eslint": "8.57.0",
+    "happy-dom": "20.0.11",
+    "jsdom": "^27.3.0",
+    "prettier": "3.2.5",
+    "typescript": "~5.4.0",
+    "vite": "^5.2.0",
+    "vitest": "^1.4.0"
+  }
+}
