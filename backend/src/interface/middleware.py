@@ -10,7 +10,15 @@ from sqlalchemy import select
 logger = structlog.get_logger()
 
 class LoggingMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that handles structured logging for every HTTP request.
+    Manages structlog context variables (path, method, status_code).
+    Captures unhandled exceptions and returns generic 500 error envelopes.
+    """
     async def dispatch(self, request: Request, call_next):
+        """
+        Intercepts requests to bind context vars and log outcomes.
+        """
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
             path=request.url.path,

@@ -8,10 +8,20 @@ from src.infrastructure.models import BudgetModel, RuleModel
 from src.infrastructure.base_repository import BaseRepository
 
 class SQLBudgetRepository(BaseRepository[BudgetModel], BudgetRepository):
+    """
+    SQLAlchemy implementation of the BudgetRepository.
+    Handles persistence of budget entries using BaseRepository for common operations.
+    """
     def __init__(self, session: AsyncSession):
         super().__init__(session, BudgetModel)
 
     async def save_bulk(self, entries: List[BudgetEntry]) -> None:
+        """
+        Bulk inserts budget entries with tenant-scoped de-duplication.
+        
+        Args:
+            entries (List[BudgetEntry]): The list of entries to save.
+        """
         tenant_id = self._get_tenant_id()
         
         # Optimized Bulk Insert using Hash-based deduplication per Tenant
@@ -43,6 +53,12 @@ class SQLBudgetRepository(BaseRepository[BudgetModel], BudgetRepository):
             await self.session.commit()
 
     async def get_all(self) -> List[BudgetEntry]:
+        """
+        Retrieves all budget entries for the current tenant.
+
+        Returns:
+            List[BudgetEntry]: List of budget domain entities.
+        """
         # Using BaseRepository's get_all which already filters by tenant
         models = await super().get_all()
         return [
@@ -57,10 +73,22 @@ class SQLBudgetRepository(BaseRepository[BudgetModel], BudgetRepository):
         ]
 
 class SQLRuleRepository(BaseRepository[RuleModel], RuleRepository):
+    """
+    SQLAlchemy implementation of the RuleRepository.
+    """
     def __init__(self, session: AsyncSession):
         super().__init__(session, RuleModel)
 
     async def add(self, rule: Rule) -> Rule:
+        """
+        Adds a new categorization rule.
+
+        Args:
+            rule (Rule): The rule to add.
+
+        Returns:
+            Rule: The added rule with ID populated.
+        """
         model = RuleModel(pattern=rule.pattern, category=rule.category)
         # tenant_id handled by BaseRepository.add
         await super().add(model)
@@ -69,9 +97,21 @@ class SQLRuleRepository(BaseRepository[RuleModel], RuleRepository):
         return Rule(id=model.id, pattern=model.pattern, category=model.category)
 
     async def get_all(self) -> List[Rule]:
+        """
+        Retrieves all rules for the current tenant.
+
+        Returns:
+            List[Rule]: List of rule entities.
+        """
         models = await super().get_all()
         return [Rule(id=m.id, pattern=m.pattern, category=m.category) for m in models]
 
     async def delete(self, rule_id: int) -> None:
+        """
+        Deletes a rule by ID.
+
+        Args:
+            rule_id (int): The ID of the rule to delete.
+        """
         await super().delete_by_id(rule_id)
         await self.session.commit()
