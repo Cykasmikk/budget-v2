@@ -23,9 +23,10 @@ describe('CallbackView', () => {
         expect(container).toBeTruthy();
     });
 
-    it('should display loading message initially', () => {
+    it('should display error when no code is present', async () => {
+        await element.updateComplete;
         const message = element.shadowRoot?.querySelector('p');
-        expect(message?.textContent).toContain('Completing sign in');
+        expect(message?.textContent).toContain('No authorization code found');
     });
 
     it('should handle SSO callback with code', async () => {

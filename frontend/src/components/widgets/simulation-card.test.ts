@@ -9,9 +9,10 @@ describe('SimulationCard', () => {
         document.body.appendChild(element);
     });
 
-    it('should render simulation card', () => {
-        const card = element.shadowRoot?.querySelector('.card');
-        expect(card).toBeTruthy();
+    it('should render simulation card', async () => {
+        await element.updateComplete;
+        const title = element.shadowRoot?.querySelector('h2');
+        expect(title?.textContent).toContain('Sandbox Simulator');
     });
 });
 

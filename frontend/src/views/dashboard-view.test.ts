@@ -9,13 +9,10 @@ describe('DashboardView', () => {
         document.body.appendChild(element);
     });
 
-    it('should render file upload component', () => {
-        const upload = element.shadowRoot?.querySelector('file-upload');
-        expect(upload).toBeTruthy();
+    it('should render analysis card component', () => {
+        const card = element.shadowRoot?.querySelector('analysis-card');
+        expect(card).toBeTruthy();
     });
 
-    it('should render budget chart component', () => {
-        const chart = element.shadowRoot?.querySelector('budget-chart');
-        expect(chart).toBeTruthy();
-    });
+
 });

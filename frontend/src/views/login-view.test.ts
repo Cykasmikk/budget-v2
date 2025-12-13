@@ -70,12 +70,12 @@ describe('LoginView', () => {
         );
 
         element.email = 'test@example.com';
-        element.password = 'wrong';
+        element.password = 'password123';
         
         const form = element.shadowRoot?.querySelector('form') as HTMLFormElement;
         form.dispatchEvent(new Event('submit'));
         
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 0));
         await element.updateComplete;
         
         expect(element.error).toBeTruthy();

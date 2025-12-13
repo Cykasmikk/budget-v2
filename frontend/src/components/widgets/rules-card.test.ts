@@ -52,12 +52,12 @@ describe('RulesCard', () => {
         expect(emptyState).toContain('No custom rules');
     });
 
-    it('should display rules table when rules exist', () => {
+    it('should display rules table when rules exist', async () => {
         element.rules = [
             { id: 1, pattern: '^AWS.*', category: 'Cloud' },
             { id: 2, pattern: '^Azure.*', category: 'Cloud' }
         ];
-        element.requestUpdate();
+        await element.updateComplete;
         
         const table = element.shadowRoot?.querySelector('table');
         expect(table).toBeTruthy();

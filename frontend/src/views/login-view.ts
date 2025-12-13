@@ -251,6 +251,8 @@ export class LoginView extends LitElement {
     const emailResult = EmailSchema.safeParse(this.email);
     const passwordResult = PasswordSchema.safeParse(this.password);
 
+    console.log('Login Debug:', { email: this.email, pass: this.password, emailValid: emailResult.success, passValid: passwordResult.success });
+
     if (!emailResult.success) {
       this.emailError = getValidationError(emailResult.error);
       return;

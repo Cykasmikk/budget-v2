@@ -34,30 +34,30 @@ describe('AnalysisCard', () => {
         expect(card).toBeTruthy();
     });
 
-    it('should display correct title for category view', () => {
+    it('should display correct title for category view', async () => {
         element.viewMode = 'category';
-        element.requestUpdate();
+        await element.updateComplete;
         const title = element.shadowRoot?.querySelector('.card-title');
         expect(title?.textContent).toContain('Analysis');
     });
 
-    it('should display correct title for forecast view', () => {
+    it('should display correct title for forecast view', async () => {
         element.viewMode = 'forecast';
-        element.requestUpdate();
+        await element.updateComplete;
         const title = element.shadowRoot?.querySelector('.card-title');
         expect(title?.textContent).toContain('Forecast');
     });
 
-    it('should display correct title for simulator view', () => {
+    it('should display correct title for simulator view', async () => {
         element.viewMode = 'simulator';
-        element.requestUpdate();
+        await element.updateComplete;
         const title = element.shadowRoot?.querySelector('.card-title');
         expect(title?.textContent).toContain('Simulator');
     });
 
-    it('should display correct title for chat view', () => {
+    it('should display correct title for chat view', async () => {
         element.viewMode = 'chat';
-        element.requestUpdate();
+        await element.updateComplete;
         const title = element.shadowRoot?.querySelector('.card-title');
         expect(title?.textContent).toContain('AI Chat');
     });
@@ -67,23 +67,23 @@ describe('AnalysisCard', () => {
         expect(controls).toBeTruthy();
     });
 
-    it('should render chart for category view', () => {
+    it('should render chart for category view', async () => {
         element.viewMode = 'category';
-        element.requestUpdate();
+        await element.updateComplete;
         const chart = element.shadowRoot?.querySelector('budget-chart');
         expect(chart).toBeTruthy();
     });
 
-    it('should render simulator for simulator view', () => {
+    it('should render simulator for simulator view', async () => {
         element.viewMode = 'simulator';
-        element.requestUpdate();
+        await element.updateComplete;
         const simulator = element.shadowRoot?.querySelector('simulator-view');
         expect(simulator).toBeTruthy();
     });
 
-    it('should render ai-chat for chat view', () => {
+    it('should render ai-chat for chat view', async () => {
         element.viewMode = 'chat';
-        element.requestUpdate();
+        await element.updateComplete;
         const chat = element.shadowRoot?.querySelector('ai-chat');
         expect(chat).toBeTruthy();
     });

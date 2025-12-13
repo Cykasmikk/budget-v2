@@ -58,11 +58,15 @@ describe('AIChat', () => {
         const input = element.shadowRoot?.querySelector('.chat-input') as HTMLTextAreaElement;
         input.value = 'Test message';
         input.dispatchEvent(new Event('input'));
-        
+        await element.updateComplete; // Ensure button enables state update
+
         const sendButton = element.shadowRoot?.querySelector('.send-button') as HTMLButtonElement;
         sendButton.click();
         
-        await element.updateComplete;
+        // Wait for event loop to process the click handler start
+        await new Promise(resolve => setTimeout(resolve, 0));
+        await element.updateComplete; // Wait for isLoading render update
+        
         expect(element.isLoading).toBe(true);
     });
 
