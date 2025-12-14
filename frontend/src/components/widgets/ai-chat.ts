@@ -1,10 +1,12 @@
 import { html, css } from 'lit';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { BaseComponent } from '../base-component';
 import { ChatMessage } from '../../types/interfaces';
 import type { BudgetMetrics } from '../../store/budget-store';
 import { ChatMessageSchema, getValidationError } from '../../utils/validation';
 import { sanitizeHtml } from '../../utils/sanitize';
+import { markdownToHtml } from '../../utils/markdown';
 import { logger } from '../../services/logger';
 
 @customElement('ai-chat')
@@ -102,6 +104,37 @@ export class AIChat extends BaseComponent {
         padding: 0.75rem 1rem;
         border-radius: var(--radius-md);
         word-wrap: break-word;
+        line-height: 1.5;
+      }
+
+      .message-content strong {
+        font-weight: 600;
+      }
+
+      .message-content em {
+        font-style: italic;
+      }
+
+      .message-content ul {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+        list-style-type: disc;
+      }
+
+      .message-content li {
+        margin: 0.25rem 0;
+      }
+
+      .message-content p {
+        margin: 0.5rem 0;
+      }
+
+      .message-content p:first-child {
+        margin-top: 0;
+      }
+
+      .message-content p:last-child {
+        margin-bottom: 0;
       }
 
       .message.user .message-content {
@@ -260,15 +293,24 @@ export class AIChat extends BaseComponent {
     this.inputValue = '';
     this.isLoading = true;
 
+    // Create assistant message placeholder for streaming
+    const assistantMessage: ChatMessage = {
+      role: 'assistant',
+      content: '',
+      timestamp: new Date()
+    };
+    this.messages = [...this.messages, assistantMessage];
+    const messageIndex = this.messages.length - 1;
+
     try {
-      const response = await fetch('/api/v1/ai/chat', {
+      const response = await fetch('/api/v1/ai/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: userMessage.content,
-          conversation_history: this.messages.slice(0, -1).map(m => ({
+          conversation_history: this.messages.slice(0, -2).map(m => ({
             role: m.role,
             content: m.content
           }))
@@ -279,24 +321,90 @@ export class AIChat extends BaseComponent {
         throw new Error('Failed to get AI response');
       }
 
-      const data = await response.json();
-      
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date()
-      };
+      // Handle streaming response (Server-Sent Events format)
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-      this.messages = [...this.messages, assistantMessage];
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6); // Remove 'data: ' prefix
+            
+            if (data === '[DONE]') {
+              this.isLoading = false;
+              return;
+            }
+
+            try {
+              // Parse JSON-encoded token
+              const token = JSON.parse(data);
+              
+              // Update the assistant message content incrementally
+              this.messages[messageIndex] = {
+                ...this.messages[messageIndex],
+                content: this.messages[messageIndex].content + token
+              };
+              
+              // Trigger re-render
+              this.requestUpdate();
+            } catch (e) {
+              // If parsing fails, treat as plain text
+              this.messages[messageIndex] = {
+                ...this.messages[messageIndex],
+                content: this.messages[messageIndex].content + data
+              };
+              this.requestUpdate();
+            }
+          }
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        if (buffer.startsWith('data: ')) {
+          const data = buffer.slice(6);
+          if (data !== '[DONE]') {
+            try {
+              const token = JSON.parse(data);
+              this.messages[messageIndex] = {
+                ...this.messages[messageIndex],
+                content: this.messages[messageIndex].content + token
+              };
+            } catch (e) {
+              this.messages[messageIndex] = {
+                ...this.messages[messageIndex],
+                content: this.messages[messageIndex].content + data
+              };
+            }
+            this.requestUpdate();
+          }
+        }
+      }
+
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       logger.error('Chat error', 'ai-chat', errorObj);
-      const errorMessage: ChatMessage = {
+      
+      // Update the assistant message with error
+      this.messages[messageIndex] = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date()
       };
-      this.messages = [...this.messages, errorMessage];
+      this.requestUpdate();
     } finally {
       this.isLoading = false;
     }
@@ -342,7 +450,9 @@ export class AIChat extends BaseComponent {
               ${msg.role === 'user' ? '👤' : '🤖'}
             </div>
             <div class="message-content">
-              ${msg.content}
+              ${msg.role === 'assistant' 
+                ? unsafeHTML(markdownToHtml(msg.content))
+                : msg.content}
             </div>
           </div>
         `)}

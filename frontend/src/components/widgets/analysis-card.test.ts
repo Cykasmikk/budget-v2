@@ -16,6 +16,7 @@ describe('AnalysisCard', () => {
         monthly_trend: [],
         category_history: {},
         project_history: {},
+        timeline: [],
         category_vendors: {},
         project_vendors: {},
         category_merchants: {},
@@ -48,13 +49,6 @@ describe('AnalysisCard', () => {
         expect(title?.textContent).toContain('Forecast');
     });
 
-    it('should display correct title for simulator view', async () => {
-        element.viewMode = 'simulator';
-        await element.updateComplete;
-        const title = element.shadowRoot?.querySelector('.card-title');
-        expect(title?.textContent).toContain('Simulator');
-    });
-
     it('should display correct title for chat view', async () => {
         element.viewMode = 'chat';
         await element.updateComplete;
@@ -72,13 +66,6 @@ describe('AnalysisCard', () => {
         await element.updateComplete;
         const chart = element.shadowRoot?.querySelector('budget-chart');
         expect(chart).toBeTruthy();
-    });
-
-    it('should render simulator for simulator view', async () => {
-        element.viewMode = 'simulator';
-        await element.updateComplete;
-        const simulator = element.shadowRoot?.querySelector('simulator-view');
-        expect(simulator).toBeTruthy();
     });
 
     it('should render ai-chat for chat view', async () => {

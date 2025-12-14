@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, AsyncIterator
 from src.domain.budget import BudgetEntry
 
 class ExcelParser(ABC):
@@ -12,5 +12,24 @@ class ExcelParser(ABC):
         """
         Parses the binary content of an Excel file into BudgetEntry objects.
         Returns a tuple of (valid_entries, warnings).
+        """
+        pass
+
+class LLMProvider(ABC):
+    """
+    Abstract interface for Large Language Model providers.
+    """
+
+    @abstractmethod
+    async def generate_response(self, prompt: str, context: str, conversation_history: List[Dict[str, str]] = []) -> str:
+        """
+        Generates a response from the LLM based on the prompt and context.
+        """
+        pass
+
+    @abstractmethod
+    async def generate_response_stream(self, prompt: str, context: str, conversation_history: List[Dict[str, str]] = []) -> AsyncIterator[str]:
+        """
+        Generates a streaming response from the LLM, yielding tokens as they are generated.
         """
         pass

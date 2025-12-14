@@ -166,7 +166,13 @@ export class FileUpload extends BaseComponent {
         const response = await fetch('/api/v1/upload', { method: 'POST', body: formData });
         if (!response.ok) throw new Error('Upload failed');
 
-        const analysisData = await response.json();
+        const responseData = await response.json();
+        const analysisData = responseData.data;
+        
+        if (!analysisData) {
+            throw new Error('Invalid server response: No data received');
+        }
+
         const skippedCount = analysisData.skipped_count || 0;
         const warnings = analysisData.warnings || [];
         const successCount = (analysisData.subscriptions?.length || 0) + (analysisData.total_expenses > 0 ? 50 : 0);

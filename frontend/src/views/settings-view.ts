@@ -233,11 +233,14 @@ export class SettingsView extends LitElement {
                             id="forecast-horizon"
                             aria-describedby="forecast-horizon-desc"
                             @change=${(e: any) => this.handleUpdate('forecast_horizon', parseInt(e.target.value))}
-                            .value=${settings.forecast_horizon.toString()}
+                            .value=${(settings.forecast_horizon ?? 6).toString()}
                         >
                             <option value="3">3 Months</option>
                             <option value="6">6 Months</option>
                             <option value="12">12 Months</option>
+                            <option value="24">24 Months</option>
+                            <option value="36">36 Months</option>
+                            <option value="60">60 Months</option>
                         </select>
                     </div>
 
@@ -266,10 +269,9 @@ export class SettingsView extends LitElement {
                             <div class="description">Global monthly spending limit triggering warnings.</div>
                         </div>
                         <input 
-                            type="number" 
-                            .value=${settings.budget_threshold.toString()}
-                            @change=${(e: any) => this.handleUpdate('budget_threshold', parseFloat(e.target.value))}
-                        />
+                                                        type="number"
+                                                        .value=${(settings.budget_threshold ?? 0).toString()}
+                                                        @change=${(e: any) => this.handleUpdate('budget_threshold', parseFloat(e.target.value))}                        />
                     </div>
                 </section>
 

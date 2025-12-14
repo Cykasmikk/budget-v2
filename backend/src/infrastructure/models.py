@@ -77,6 +77,7 @@ class BudgetModel(Base):
     amount = Column(Numeric(10, 2), nullable=False)
     description = Column(String, nullable=False)
     project = Column(String, nullable=True, default="General")
+    expense_type = Column(String, nullable=True, default="opex")
 
 class RuleModel(Base):
     """

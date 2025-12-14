@@ -8,6 +8,7 @@ export class AnalysisControls extends BaseComponent {
   @property({ type: String }) viewMode = 'category';
   @property({ type: Boolean }) showForecast = false;
   @property({ type: Number }) forecastMonths = 6;
+  @property({ type: Number }) maxMonths = 12;
   @property({ type: String }) forecastType = 'total';
 
   static styles = [
@@ -54,12 +55,6 @@ export class AnalysisControls extends BaseComponent {
     `
   ];
 
-  /* Events */
-  private _toggleForecast(e: Event) {
-    const checked = (e.target as HTMLInputElement).checked;
-    this.dispatchEvent(new CustomEvent('toggle-forecast', { detail: checked }));
-  }
-
   private _changeForecastMonths(e: Event) {
     const val = Number((e.target as HTMLInputElement).value);
     this.dispatchEvent(new CustomEvent('update-months', { detail: val }));
@@ -73,20 +68,12 @@ export class AnalysisControls extends BaseComponent {
     return html`
       ${this.viewMode === 'forecast' ? html`
           <div class="toggle-group" style="padding: 0.25rem 0.75rem; gap: 0.5rem;">
-            <label class="text-muted" style="font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-               <input type="checkbox" .checked=${this.showForecast} @change=${this._toggleForecast} aria-label="Show forecast">
-               Show Forecast
-            </label>
-            
-            ${this.showForecast ? html`
-                <div class="separator"></div>
-                <label class="text-muted" style="font-size: 0.8rem; white-space: nowrap;">Horizon: ${this.forecastMonths} Months</label>
-                <input type="range" min="1" max="36" step="1" .value=${this.forecastMonths} 
-                       @input=${this._changeForecastMonths}
-                       style="width: 100px; accent-color: var(--color-primary);"
-                       aria-label="Forecast horizon in months"
-                >
-            ` : ''}
+            <label class="text-muted" style="font-size: 0.8rem; white-space: nowrap;">Forecast Horizon: ${this.forecastMonths} Months</label>
+            <input type="range" min="1" max="${this.maxMonths}" step="1" .value=${this.forecastMonths} 
+                   @input=${this._changeForecastMonths}
+                   style="width: 100px; accent-color: var(--color-primary);"
+                   aria-label="Forecast horizon in months"
+            >
           </div>
           
           <div class="toggle-group">
@@ -103,8 +90,8 @@ export class AnalysisControls extends BaseComponent {
           @click=${() => budgetStore.setViewMode('project')} aria-label="View by project" aria-pressed=${this.viewMode === 'project'}>Project</button>
         <button class="toggle-btn ${this.viewMode === 'forecast' ? 'active' : ''}"
           @click=${() => budgetStore.setViewMode('forecast')} aria-label="View forecast" aria-pressed=${this.viewMode === 'forecast'}>Forecast</button>
-        <button class="toggle-btn ${this.viewMode === 'simulator' ? 'active' : ''}"
-          @click=${() => budgetStore.setViewMode('simulator')} aria-label="View simulator" aria-pressed=${this.viewMode === 'simulator'}>Simulator</button>
+        <button class="toggle-btn ${this.viewMode === 'timeline' ? 'active' : ''}"
+          @click=${() => budgetStore.setViewMode('timeline')} aria-label="View timeline" aria-pressed=${this.viewMode === 'timeline'}>Timeline</button>
         <button class="toggle-btn ${this.viewMode === 'chat' ? 'active' : ''}"
           @click=${() => budgetStore.setViewMode('chat')} aria-label="Open AI chat" aria-pressed=${this.viewMode === 'chat'}>AI Chat</button>
       </div>

@@ -51,6 +51,16 @@ class SeededRandom {
     }
 }
 
+// Helper to generate sort key (YYYY-MM) from "Mon YYYY"
+const getSortKey = (monthStr: string): string => {
+    const [mon, year] = monthStr.split(' ');
+    const monthMap: Record<string, string> = {
+        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+    };
+    return `${year}-${monthMap[mon] || '00'}`;
+};
+
 export const generateMockData = (): BudgetMetrics => {
     // Fixed seed for determinism
     const rng = new SeededRandom(123456);
@@ -118,11 +128,13 @@ export const generateMockData = (): BudgetMetrics => {
         const growth = index * 50000; // Linear growth
         const seasonal = month === 'Jun' ? 800000 : (month === 'Dec' ? -200000 : 0); // June spike, Dec dip
         const random = (rng.next() - 0.5) * 200000; // Random noise
+        const displayMonth = `${month} 2024`;
 
         return {
-            month: `${month} 2024`, // Assuming current FY
+            month: displayMonth,
             amount: Math.round(base + growth + seasonal + random),
-            is_forecast: false
+            is_forecast: false,
+            sort_key: getSortKey(displayMonth)
         };
     });
 
@@ -136,6 +148,7 @@ export const generateMockData = (): BudgetMetrics => {
         const monthName = nextDate.toLocaleString('default', { month: 'short' });
         const year = nextDate.getFullYear();
         const displayMonth = `${monthName} ${year}`;
+        const monthNum = (nextDate.getMonth() + 1).toString().padStart(2, '0');
 
         const projected = lastAmount + (avgGrowth * i);
         const random = (rng.next() - 0.5) * 100000; // Less noise in forecast
@@ -143,7 +156,8 @@ export const generateMockData = (): BudgetMetrics => {
         monthly_trend.push({
             month: displayMonth,
             amount: Math.round(projected + random),
-            is_forecast: true
+            is_forecast: true,
+            sort_key: `${year}-${monthNum}`
         });
     }
 
@@ -153,17 +167,19 @@ export const generateMockData = (): BudgetMetrics => {
 
     // Generate History Breakdown Helper
     const generateHistory = (breakdown: Record<string, number>) => {
-        const history: Record<string, Array<{ month: string; amount: number; is_forecast: boolean }>> = {};
+        const history: Record<string, Array<{ month: string; amount: number; is_forecast: boolean; sort_key: string }>> = {};
 
         Object.entries(breakdown).forEach(([key, totalAnnual]) => {
             const monthlyBase = totalAnnual / 12;
             const trendLine: any[] = months.map((month, index) => {
                 const growth = index * (monthlyBase * 0.02); // 2% growth
                 const random = (rng.next() - 0.5) * (monthlyBase * 0.1); // +/- 5% variance
+                const displayMonth = `${month} 2024`;
                 return {
-                    month: `${month} 2024`,
+                    month: displayMonth,
                     amount: Math.round(monthlyBase + growth + random),
-                    is_forecast: false
+                    is_forecast: false,
+                    sort_key: getSortKey(displayMonth)
                 };
             });
 
@@ -175,12 +191,14 @@ export const generateMockData = (): BudgetMetrics => {
                 const nextDate = new Date(2025, 6 + i - 1, 1);
                 const monthName = nextDate.toLocaleString('default', { month: 'short' });
                 const year = nextDate.getFullYear();
+                const monthNum = (nextDate.getMonth() + 1).toString().padStart(2, '0');
 
                 const projected = lastCatAmount + (catGrowth * i);
                 trendLine.push({
                     month: `${monthName} ${year}`,
                     amount: Math.round(projected),
-                    is_forecast: true
+                    is_forecast: true,
+                    sort_key: `${year}-${monthNum}`
                 });
             }
             history[key] = trendLine;
@@ -220,6 +238,7 @@ export const generateMockData = (): BudgetMetrics => {
         monthly_trend,
         category_history,
         project_history,
+        timeline: [],
         category_vendors: {}, // Fallback empty
         project_vendors: {}, // Fallback empty
         category_merchants: {}, // Fallback empty
@@ -250,11 +269,15 @@ export const generatePartialMockData = (): BudgetMetrics => {
 
     // Simplified Trend
     const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const monthly_trend = months.map(m => ({
-        month: `${m} 2024`,
-        amount: Math.round(985000 / 12),
-        is_forecast: false
-    }));
+    const monthly_trend = months.map(m => {
+        const displayMonth = `${m} 2024`;
+        return {
+            month: displayMonth,
+            amount: Math.round(985000 / 12),
+            is_forecast: false,
+            sort_key: getSortKey(displayMonth)
+        };
+    });
 
     return {
         total_expenses: 985000,
@@ -271,6 +294,7 @@ export const generatePartialMockData = (): BudgetMetrics => {
             'Cloud Migration 2.0': monthly_trend.map(x => ({ ...x, amount: x.amount * 0.6 })),
             'AI/ML Platform Build': monthly_trend.map(x => ({ ...x, amount: x.amount * 0.4 }))
         },
+        timeline: [],
         category_vendors: {},
         project_vendors: {},
         category_merchants: {},

@@ -17,6 +17,7 @@ describe('AppShell', () => {
         monthly_trend: [],
         category_history: {},
         project_history: {},
+        timeline: [],
         category_vendors: {},
         project_vendors: {},
         category_merchants: {},

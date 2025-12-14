@@ -3,7 +3,20 @@ import { ChartConfiguration } from 'chart.js';
 /**
  * View mode types for analysis views
  */
-export type ViewMode = 'category' | 'project' | 'forecast' | 'simulator' | 'chat' | 'lifecycle';
+export type ViewMode = 'category' | 'project' | 'forecast' | 'chat' | 'lifecycle' | 'timeline';
+
+/**
+ * Timeline Item for Gantt Chart
+ */
+export interface TimelineItem {
+    id: string;
+    label: string;
+    start_date: string;
+    end_date: string;
+    type: 'subscription' | 'contract' | 'hardware' | 'renewal';
+    amount?: number;
+    color?: string;
+}
 
 /**
  * Chat message interface
@@ -73,28 +86,34 @@ export interface QueryResult {
 }
 
 /**
- * Simulation result interface
- */
-export interface SimulationResult {
-    current_total: number;
-    simulated_total: number;
-    savings: number;
-    breakdown: Record<string, number>;
-}
-
-/**
  * History item structure
  */
 export interface HistoryItem {
     month: string;
     amount: number;
     is_forecast: boolean;
+    sort_key: string;
 }
 
 /**
  * History data structure (category or project history)
  */
 export type HistoryData = Record<string, HistoryItem[]>;
+
+/**
+ * Forecast summary metrics
+ */
+export interface ForecastSummary {
+    trend_direction: string;
+    forecasted_total: number;
+    growth_rate: number;
+    confidence_interval_width: number;
+    seasonality_index: number;
+    trend_component: number;
+    level_component: number;
+    outlier_detected: boolean;
+    model_accuracy: number;
+}
 
 /**
  * Dictionary type for breakdowns

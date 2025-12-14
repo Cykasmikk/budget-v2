@@ -1,5 +1,5 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import { budgetStore, BudgetMetrics } from '../store/budget-store';
+import { BudgetMetrics } from '../store/budget-store';
 import { ChartData, HistoryData, HistoryItem, Merchant, BreakdownDict, ViewMode } from '../types/interfaces';
 
 export class AnalysisController implements ReactiveController {
@@ -8,12 +8,8 @@ export class AnalysisController implements ReactiveController {
     // State managed by this controller
     selectedCategory: string | null = null;
     forecastMonths: number = 6;
-    showForecast: boolean = false;
+    showForecast: boolean = true;
     forecastType: 'total' | 'category' | 'project' = 'total';
-
-    // Simulator State
-    simCategory: string = '';
-    simPercentage: string = '';
 
     constructor(host: ReactiveControllerHost) {
         this.host = host;
@@ -36,7 +32,8 @@ export class AnalysisController implements ReactiveController {
     }
 
     setForecastMonths(months: number) {
-        this.forecastMonths = months;
+        // Validation: Clamp between 1 and 12
+        this.forecastMonths = Math.min(Math.max(months, 1), 12);
         this.host.requestUpdate();
     }
 
@@ -49,8 +46,8 @@ export class AnalysisController implements ReactiveController {
         switch (viewMode) {
             case 'forecast':
                 return 'Spending Forecast (Aus FY)';
-            case 'simulator':
-                return 'Sandbox Simulator';
+            case 'timeline':
+                return 'Timeline';
             case 'chat':
                 return 'AI Chat';
             default:
@@ -61,18 +58,6 @@ export class AnalysisController implements ReactiveController {
     selectCategory(category: string | null) {
         this.selectedCategory = category;
         this.host.requestUpdate();
-    }
-
-    handleSimulationInput(category: string, percentage: string) {
-        this.simCategory = category;
-        this.simPercentage = percentage;
-        this.host.requestUpdate();
-    }
-
-    runSimulation() {
-        if (this.simCategory && this.simPercentage) {
-            budgetStore.simulateBudget([{ category: this.simCategory, percentage: Number(this.simPercentage) }]);
-        }
     }
 
     // --- Computed Data Helpers ---

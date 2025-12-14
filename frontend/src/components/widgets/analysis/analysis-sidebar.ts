@@ -2,10 +2,11 @@ import { html, css, TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { BaseComponent } from '../../base-component';
 import { Merchant } from '../../../types/interfaces';
+import { BudgetMetrics } from '../../../store/budget-store';
 
 @customElement('analysis-sidebar')
 export class AnalysisSidebar extends BaseComponent {
-  @property({ type: Object }) metrics: any = {};
+  @property({ type: Object }) metrics: BudgetMetrics = {} as BudgetMetrics;
   @property({ type: String }) viewMode: string = 'category';
   @property({ type: String }) selectedCategory: string | null = null;
   @property({ type: Array }) merchants: Merchant[] = [];
@@ -136,28 +137,74 @@ export class AnalysisSidebar extends BaseComponent {
   }
 
   private renderForecastSummary(): TemplateResult {
-    const trend = this.metrics.monthly_trend || [];
-    const allForecasts = trend.filter((x: any) => x.is_forecast);
-    const lastVisible = allForecasts[this.forecastMonths - 1] || trend[trend.length - 1];
-    const first = trend[0]?.amount || 0;
-    const isIncreasing = (lastVisible?.amount || 0) > first;
+    const summary = this.metrics.forecast_summary;
 
-    const visibleForecasts = allForecasts.slice(0, this.forecastMonths);
-    const forecastSum = visibleForecasts.reduce((a: number, b: any) => a + b.amount, 0);
+    if (!summary) {
+        const historyLen = this.metrics.monthly_trend?.length || 0;
+        const message = historyLen < 2 
+            ? "Need at least 2 months of data to generate a forecast." 
+            : "No forecast data available.";
+
+        return html`
+            <h3>Forecast Summary</h3>
+            <div class="merchants-list">
+                <div class="merchant-item">
+                    <span class="merchant-name">Status</span>
+                    <span class="merchant-amount" style="font-size: 0.8rem; font-style: italic;">${message}</span>
+                </div>
+            </div>
+        `;
+    }
 
     return html`
-      <h3>Forecast Summary (Holt's Method)</h3>
+      <h3>Forecast Summary</h3>
       <div class="merchants-list">
          <div class="merchant-item">
-           <span class="merchant-name">Trend</span>
-           <span class="merchant-amount">
-               ${isIncreasing ? 'Increasing ↗' : 'Decreasing ↘'}
+           <span class="merchant-name" title="Overall direction of the forecast over the horizon">Trend</span>
+           <span class="merchant-amount" style="color: ${summary.trend_direction.includes('Increase') ? 'var(--color-warning)' : 'var(--color-success)'}">
+               ${summary.trend_direction}
            </span>
          </div>
          <div class="merchant-item">
-            <span class="merchant-name">Next ${this.forecastMonths} Months</span>
+            <span class="merchant-name" title="Total forecasted expenses over the chosen horizon">Forecasted Expenses</span>
             <span class="merchant-amount">
-               ${this.showForecast ? `$${forecastSum.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'Enable Forecast'}
+               $${summary.forecasted_total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+         </div>
+         <div class="merchant-item">
+            <span class="merchant-name" title="Percentage growth or decline in expenses over the forecast horizon, relative to the last actual period">Growth Rate</span>
+            <span class="merchant-amount">
+               ${summary.growth_rate}%
+            </span>
+         </div>
+         <div class="merchant-item">
+            <span class="merchant-name" title="Average width of the 95% confidence interval, indicating forecast uncertainty">Confidence Interval</span>
+            <span class="merchant-amount">
+               ±${summary.confidence_interval_width}%
+            </span>
+         </div>
+         <div class="merchant-item">
+            <span class="merchant-name" title="The underlying trend factor (change per period) in the forecasting model">Trend Component</span>
+            <span class="merchant-amount">
+               ${summary.trend_component}
+            </span>
+         </div>
+         <div class="merchant-item">
+            <span class="merchant-name" title="The smoothed base level of the data in the forecasting model">Level Component</span>
+            <span class="merchant-amount">
+               ${summary.level_component}
+            </span>
+         </div>
+         <div class="merchant-item">
+            <span class="merchant-name" title="Indicates if any historical data points were significantly outside the expected range">Outlier Detection</span>
+            <span class="merchant-amount" style="color: ${summary.outlier_detected ? 'var(--color-error)' : 'var(--color-text-muted)'}">
+               ${summary.outlier_detected ? 'Detected' : 'None'}
+            </span>
+         </div>
+         <div class="merchant-item">
+            <span class="merchant-name" title="Model accuracy based on Mean Absolute Percentage Error (MAPE), higher is better">Model Accuracy</span>
+            <span class="merchant-amount">
+               ${summary.model_accuracy}%
             </span>
          </div>
       </div>

@@ -5,13 +5,6 @@ export interface BudgetRule {
     category: string;
 }
 
-export interface SimulationResult {
-    current_total: number;
-    simulated_total: number;
-    savings: number;
-    breakdown: Record<string, number>;
-}
-
 export class BudgetService {
     private static instance: BudgetService;
     private baseUrl = '/api/v1';
@@ -55,16 +48,6 @@ export class BudgetService {
             method: 'DELETE'
         });
         if (!response.ok) throw new Error('Failed to delete rule');
-    }
-
-    async simulateBudget(adjustments: Array<{ category: string; percentage: number }>): Promise<SimulationResult> {
-        const response = await fetch(`${this.baseUrl}/simulate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(adjustments)
-        });
-        if (!response.ok) throw new Error('Simulation failed');
-        return response.json();
     }
 }
 

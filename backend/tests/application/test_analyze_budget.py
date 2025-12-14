@@ -26,8 +26,8 @@ async def test_analyze_budget_use_case():
     
     # Verify
     mock_repo.get_all.assert_called_once()
-    assert result["total_expenses"] == Decimal("35.0")
-    assert result["category_breakdown"] == {
+    assert result.total_expenses == Decimal("35.0")
+    assert result.category_breakdown == {
         "Food": Decimal("30.0"),
         "Transport": Decimal("5.0")
     }

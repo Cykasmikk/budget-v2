@@ -57,26 +57,6 @@ describe('BudgetService', () => {
         });
     });
 
-    it('should simulate budget', async () => {
-        const mockResult = {
-            current_total: 1000,
-            simulated_total: 900,
-            savings: 100,
-            breakdown: { 'Cloud': 900 }
-        };
-        
-        (global.fetch as any).mockResolvedValueOnce({
-            ok: true,
-            json: () => Promise.resolve(mockResult)
-        });
-
-        const result = await service.simulateBudget([
-            { category: 'Cloud', percentage: -10 }
-        ]);
-        
-        expect(result).toEqual(mockResult);
-    });
-
     it('should throw error on failed fetch', async () => {
         (global.fetch as any).mockResolvedValueOnce({
             ok: false

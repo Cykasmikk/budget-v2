@@ -2,10 +2,11 @@ import pytest
 import pandas as pd
 import uuid
 from io import BytesIO
-from datetime import date
+from datetime import date, datetime
 from src.main import app
 from src.interface.dependencies import get_current_user
 from src.application.context import set_tenant_id
+from src.domain.user import User, UserRole
 
 @pytest.mark.asyncio
 async def test_health_check(client):
@@ -20,7 +21,14 @@ async def test_upload_and_analysis(client):
     
     async def mock_get_current_user():
         set_tenant_id(tenant_id)
-        return {"id": "test-user", "role": "admin", "tenant_id": str(tenant_id)}
+        # Return object, not dict
+        return User(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            email="test@example.com",
+            role=UserRole.ADMIN,
+            created_at=datetime.now()
+        )
     
     app.dependency_overrides[get_current_user] = mock_get_current_user
     

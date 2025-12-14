@@ -3,12 +3,12 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { BaseComponent } from '../base-component';
 import { AnalysisController } from '../../controllers/analysis-controller';
 import { BudgetMetrics } from '../../store/budget-store';
-import { ViewMode, SimulationResult } from '../../types/interfaces';
+import { ViewMode } from '../../types/interfaces';
 
 // Sub-components
 import './analysis/analysis-sidebar';
-import './analysis/simulator-view';
 import './analysis/analysis-controls';
+import './timeline/timeline-view';
 import '../budget-chart';
 import '../reports/infographic-report';
 import './ai-chat';
@@ -21,7 +21,6 @@ export class AnalysisCard extends BaseComponent {
   @property({ type: String }) viewMode: ViewMode = 'category';
   @property({ type: Number }) budgetLimit: number = 0;
   @property({ type: Boolean }) isLoading: boolean = false;
-  @property({ type: Object }) simulation: SimulationResult | null = null;
 
   @state() showInfographic: boolean = false;
 
@@ -123,6 +122,11 @@ export class AnalysisCard extends BaseComponent {
     // 2. Determine Title via Controller
     const title = this.controller.getTitle(this.viewMode);
 
+    // Calculate max available forecast months from data
+    const maxAvailableForecast = this.metrics.monthly_trend 
+        ? this.metrics.monthly_trend.filter(x => x.is_forecast).length 
+        : 12;
+
     return html`
       <div class="card h-full">
         <div class="header-row">
@@ -143,6 +147,7 @@ export class AnalysisCard extends BaseComponent {
                 .viewMode=${this.viewMode}
                 .showForecast=${this.controller.showForecast}
                 .forecastMonths=${this.controller.forecastMonths}
+                .maxMonths=${maxAvailableForecast || 12}
                 .forecastType=${this.controller.forecastType}
                 @toggle-forecast=${(e: CustomEvent) => this.controller.toggleForecast(e.detail)}
                 @update-months=${(e: CustomEvent) => this.controller.setForecastMonths(e.detail)}
@@ -151,17 +156,10 @@ export class AnalysisCard extends BaseComponent {
         </div>
 
         <div class="content">
-            ${this.viewMode === 'simulator' ? html`
-                <simulator-view 
-                    .metrics=${this.metrics} 
-                    .simulation=${this.simulation}
-                    @run-simulation=${(e: CustomEvent) => {
-          this.controller.handleSimulationInput(e.detail.category, e.detail.percentage);
-          this.controller.runSimulation();
-        }}
-                ></simulator-view>
-            ` : this.viewMode === 'chat' ? html`
+            ${this.viewMode === 'chat' ? html`
                 <ai-chat .metrics=${this.metrics}></ai-chat>
+            ` : this.viewMode === 'timeline' ? html`
+                <timeline-view .metrics=${this.metrics}></timeline-view>
             ` : html`
                 
                 <div class="chart-panel">

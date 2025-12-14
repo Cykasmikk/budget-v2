@@ -205,36 +205,9 @@ class AuthService(AuthProvider):
         self.session.add(user)
         await self.session.flush()
         
-        # 3. Seed Sample Data
-        from src.infrastructure.models import BudgetModel
-        from datetime import date, timedelta
-        import random
-        
-        categories = ["Cloud Infrastructure", "Staffing & Contractors", "Software Licenses", "Marketing", "Office & G&A"]
-        projects = ["Cloud Migration 2.0", "Legacy DC Maintenance", "AI/ML Platform Init", "Security Hardening"]
-        
-        # Generate 6 months of data
-        today = date.today()
-        entries = []
-        
-        for i in range(50):
-            cat = random.choice(categories)
-            # Higher amounts for Cloud/Staffing
-            base_amount = 5000 if cat in ["Cloud Infrastructure", "Staffing & Contractors"] else 1000
-            amount = base_amount * random.uniform(0.8, 1.5)
-            
-            entry = BudgetModel(
-                tenant_id=tenant_id,
-                date=today - timedelta(days=random.randint(0, 180)),
-                category=cat,
-                amount=amount,
-                description=f"Sample {cat} Expense",
-                project=random.choice(projects)
-            )
-            entries.append(entry)
-            
-        self.session.add_all(entries)
-        await self.session.commit()
+        # 3. Seed Sample Data (disabled - users should upload their own data)
+        # Sample data seeding removed to prevent automatic dummy data on login
+        # Users can upload their own budget files or use the frontend sample data loader if needed
         
         # 4. Create Session
         domain_user = User(

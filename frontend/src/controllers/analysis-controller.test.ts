@@ -25,12 +25,13 @@ describe('AnalysisController', () => {
         subscriptions: [],
         anomalies: [],
         monthly_trend: [
-            { month: 'Jan 2024', amount: 100, is_forecast: false }
+            { month: 'Jan 2024', amount: 100, is_forecast: false, sort_key: '2024-01' }
         ],
         category_history: {
-            'Cloud': [{ month: 'Jan 2024', amount: 50, is_forecast: false }]
+            'Cloud': [{ month: 'Jan 2024', amount: 50, is_forecast: false, sort_key: '2024-01' }]
         },
         project_history: {},
+        timeline: [],
         category_vendors: {},
         project_vendors: {},
         category_merchants: {},
@@ -44,7 +45,7 @@ describe('AnalysisController', () => {
 
     it('should initialize with default values', () => {
         expect(controller.selectedCategory).toBeNull();
-        expect(controller.showForecast).toBe(false);
+        expect(controller.showForecast).toBe(true);
         expect(controller.forecastMonths).toBe(6);
     });
 
@@ -97,7 +98,6 @@ describe('AnalysisController', () => {
 
     it('should get title for different view modes', () => {
         expect(controller.getTitle('forecast')).toBe('Spending Forecast (Aus FY)');
-        expect(controller.getTitle('simulator')).toBe('Sandbox Simulator');
         expect(controller.getTitle('chat')).toBe('AI Chat');
         expect(controller.getTitle('category')).toBe('Analysis');
         expect(controller.getTitle('project')).toBe('Analysis');
@@ -136,13 +136,6 @@ describe('AnalysisController', () => {
         const result = controller.getChartData('forecast', mockMetrics);
         
         expect(result.data).toBeDefined();
-    });
-
-    it('should handle simulation input', () => {
-        controller.handleSimulationInput('Cloud', '10');
-        
-        expect(controller.simCategory).toBe('Cloud');
-        expect(controller.simPercentage).toBe('10');
     });
 
     it('should set forecast type', () => {

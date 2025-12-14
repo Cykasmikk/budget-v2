@@ -9,6 +9,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://budget_user:budget_password@postgres/budget_db
       - AUTH_SECRET_KEY=${AUTH_SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GUEST_RATE_LIMIT=0
     networks:
       - budget-net

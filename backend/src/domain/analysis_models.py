@@ -12,12 +12,16 @@ class TrendEntry(BaseModel):
         amount (Decimal): The total aggregated amount for the month.
         is_forecast (bool): True if this data point is a predicted value, False if actual.
         sort_key (str): A sortable string representation of the month (e.g., "2024-01").
+        lower_bound (Optional[Decimal]): Lower bound of confidence interval (95%) for forecasts.
+        upper_bound (Optional[Decimal]): Upper bound of confidence interval (95%) for forecasts.
     """
     model_config = ConfigDict(strict=True)
     month: str
     amount: Decimal
     is_forecast: bool
     sort_key: str
+    lower_bound: Optional[Decimal] = None
+    upper_bound: Optional[Decimal] = None
 
 class GapEntry(BaseModel):
     """
@@ -69,6 +73,19 @@ class SubscriptionEntry(BaseModel):
     next_payment_date: date
     status: str = "Active" # Active, Cancelled, Expiring
 
+class TimelineItem(BaseModel):
+    """
+    Represents a time-bound event or duration for the Gantt chart.
+    """
+    model_config = ConfigDict(strict=True)
+    id: str
+    label: str
+    start_date: date
+    end_date: date
+    type: str  # 'subscription', 'contract', 'hardware', 'renewal'
+    amount: Optional[float] = None
+    color: Optional[str] = None
+
 class AnomalyEntry(BaseModel):
     """
     Represents a spending anomaly (outlier) detected in the data.
@@ -76,14 +93,29 @@ class AnomalyEntry(BaseModel):
     Attributes:
         description (str): The transaction description.
         date (date): The date of the anomalous transaction.
-        amount (float): The amount of the transaction.
-        average (float): The historical average for similar transactions.
+        amount: float
+        average: float
     """
     model_config = ConfigDict(strict=True)
     description: str
     date: date
     amount: float
     average: float
+
+class ForecastSummary(BaseModel):
+    """
+    Summary metrics for the forecast model.
+    """
+    model_config = ConfigDict(strict=True)
+    trend_direction: str
+    forecasted_total: Decimal
+    growth_rate: Decimal
+    confidence_interval_width: Decimal
+    seasonality_index: Decimal
+    trend_component: Decimal
+    level_component: Decimal
+    outlier_detected: bool
+    model_accuracy: Decimal
 
 class BudgetAnalysisResult(BaseModel):
     """
@@ -107,6 +139,10 @@ class BudgetAnalysisResult(BaseModel):
     flash_fill: List[FlashFillSuggestion]
     subscriptions: List[SubscriptionEntry]
     anomalies: List[AnomalyEntry]
+    timeline: List[TimelineItem] = []
+    
+    # Forecasting
+    forecast_summary: Optional[ForecastSummary] = None
     
     # Upload feedback
     warnings: List[str] = []

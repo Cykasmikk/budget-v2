@@ -14,6 +14,7 @@ const createMetrics = (total: number, categoryVal: number): BudgetMetrics => ({
     monthly_trend: [],
     category_history: {},
     project_history: {},
+    timeline: [],
     category_vendors: {},
     project_vendors: {},
     category_merchants: {},
@@ -110,12 +111,12 @@ describe('BudgetStore Merge Logic', () => {
 
     it('COMBINED strategy should merge trend history by summing matching months', () => {
         const history1 = [
-            { month: 'Jan 2024', amount: 100, is_forecast: false },
-            { month: 'Feb 2024', amount: 150, is_forecast: false }
+            { month: 'Jan 2024', amount: 100, is_forecast: false, sort_key: '2024-01' },
+            { month: 'Feb 2024', amount: 150, is_forecast: false, sort_key: '2024-02' }
         ];
         const history2 = [
-            { month: 'Jan 2024', amount: 50, is_forecast: false }, // Should sum to 150
-            { month: 'Mar 2024', amount: 200, is_forecast: false }  // Should be added
+            { month: 'Jan 2024', amount: 50, is_forecast: false, sort_key: '2024-01' }, // Should sum to 150
+            { month: 'Mar 2024', amount: 200, is_forecast: false, sort_key: '2024-03' }  // Should be added
         ];
 
         const file1: UploadedFile = {

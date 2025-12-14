@@ -1,5 +1,6 @@
 import { Store } from "@tanstack/store";
 import { logger } from '../services/logger';
+import { uiStore } from './ui-store';
 
 export interface User {
     email: string;
@@ -60,6 +61,7 @@ export class AuthStore extends Store<AuthState> {
             user: null,
             isAuthenticated: false
         }));
+        uiStore.reset();
     }
 }
 

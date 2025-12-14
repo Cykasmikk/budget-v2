@@ -1,8 +1,9 @@
 import { Store } from '@tanstack/store';
 import { budgetService } from '../services/budget.service';
 import { generateMockData, generatePartialMockData } from '../utils/mock-data';
-import { QueryResult, BreakdownDict, MerchantMap, HistoryData, HistoryItem } from '../types/interfaces';
+import { QueryResult, BreakdownDict, MerchantMap, HistoryData, HistoryItem, ForecastSummary, TimelineItem } from '../types/interfaces';
 import { logger } from '../services/logger';
+import { ForecastService } from '../utils/forecast';
 
 export interface Transaction {
     date: string;
@@ -30,9 +31,12 @@ export interface BudgetMetrics {
     flash_fill: Array<{ description: string; suggested_category: string; count: number }>;
     subscriptions: Array<Subscription>;
     anomalies: Array<{ description: string; date: string; amount: number; average: number }>;
-    monthly_trend: Array<{ month: string; amount: number; is_forecast: boolean }>;
-    category_history: Record<string, Array<{ month: string; amount: number; is_forecast: boolean }>>;
-    project_history: Record<string, Array<{ month: string; amount: number; is_forecast: boolean }>>;
+    monthly_trend: HistoryItem[];
+    category_history: Record<string, HistoryItem[]>;
+    project_history: Record<string, HistoryItem[]>;
+    
+    // Timeline / Gantt
+    timeline: Array<TimelineItem>;
 
     // Dynamic Vendor Maps (Drill-Down)
     category_vendors: Record<string, string[]>;
@@ -41,6 +45,9 @@ export interface BudgetMetrics {
     // Detailed Merchant Breakdowns (Map<Category, Map<Merchant, Amount>>)
     category_merchants: Record<string, Record<string, number>>;
     project_merchants: Record<string, Record<string, number>>;
+    
+    // Forecast Summary
+    forecast_summary?: ForecastSummary;
 }
 
 export interface UploadedFile {
@@ -67,10 +74,9 @@ export interface BudgetState {
     isLoading: boolean;
     error: string | null;
     budgetLimit: number;
-    viewMode: 'category' | 'project' | 'forecast' | 'simulator' | 'chat' | 'lifecycle';
+    viewMode: 'category' | 'project' | 'forecast' | 'chat' | 'lifecycle' | 'timeline';
     queryResult: QueryResult | null;
     rules: Array<{ id: number; pattern: string; category: string }>;
-    simulation: { current_total: number; simulated_total: number; savings: number; breakdown: Record<string, number> } | null;
     uploadedFiles: UploadedFile[];
     mergeStrategy: MergeStrategy;
     settings: AppSettings; // Persisted settings
@@ -90,6 +96,8 @@ const initialState: BudgetState = {
         monthly_trend: [],
         category_history: {},
         project_history: {},
+        
+        timeline: [],
 
         category_vendors: {},
         project_vendors: {},
@@ -103,7 +111,6 @@ const initialState: BudgetState = {
     viewMode: 'category',
     queryResult: null,
     rules: [],
-    simulation: null,
     uploadedFiles: [],
     mergeStrategy: 'latest',
     settings: {
@@ -179,10 +186,10 @@ export class BudgetStore {
 
     // Helper to merge history arrays by summing amounts for matching months
     private mergeHistoryArrays(
-        base: Array<{ month: string; amount: number; is_forecast: boolean }>,
-        incoming: Array<{ month: string; amount: number; is_forecast: boolean }>
+        base: HistoryItem[],
+        incoming: HistoryItem[]
     ) {
-        const mergedMap = new Map<string, { month: string; amount: number; is_forecast: boolean }>();
+        const mergedMap = new Map<string, HistoryItem>();
 
         // Index base
         base.forEach(item => mergedMap.set(item.month, { ...item }));
@@ -192,6 +199,8 @@ export class BudgetStore {
             if (mergedMap.has(item.month)) {
                 const existing = mergedMap.get(item.month)!;
                 existing.amount += item.amount;
+                // If any source is actual data (false), the merged point is actual (false)
+                existing.is_forecast = existing.is_forecast && item.is_forecast;
             } else {
                 mergedMap.set(item.month, { ...item });
             }
@@ -232,7 +241,7 @@ export class BudgetStore {
     }
 
     private recalculateMonthlyTrend(blended: BudgetMetrics): void {
-        const trendMap = new Map<string, { month: string; amount: number; is_forecast: boolean }>();
+        const trendMap = new Map<string, HistoryItem>();
 
         Object.values(blended.category_history).forEach((history: HistoryItem[]) => {
             history.forEach((item: HistoryItem) => {
@@ -262,10 +271,29 @@ export class BudgetStore {
                 combined.top_merchants[key] = (combined.top_merchants[key] || 0) + Number(val);
             });
 
-            combined.gaps = [...combined.gaps, ...(data.gaps || [])];
-            combined.flash_fill = [...combined.flash_fill, ...(data.flash_fill || [])];
-            combined.subscriptions = [...combined.subscriptions, ...(data.subscriptions || [])];
-            combined.anomalies = [...combined.anomalies, ...(data.anomalies || [])];
+            // Deduplicate Arrays
+            const mergeUnique = (base: any[], incoming: any[], keyFn: (item: any) => string) => {
+                const map = new Map(base.map(i => [keyFn(i), i]));
+                incoming.forEach(i => map.set(keyFn(i), i));
+                return Array.from(map.values());
+            };
+
+            combined.gaps = mergeUnique(combined.gaps, data.gaps || [], (i) => `${i.start_date}_${i.end_date}`);
+            combined.flash_fill = mergeUnique(combined.flash_fill, data.flash_fill || [], (i) => i.description);
+            combined.subscriptions = mergeUnique(combined.subscriptions, data.subscriptions || [], (i) => `${i.description}_${i.amount}`);
+            combined.timeline = mergeUnique(combined.timeline, data.timeline || [], (i) => i.id);
+            combined.anomalies = mergeUnique(combined.anomalies, data.anomalies || [], (i) => `${i.description}_${i.date}`);
+
+            // Check for date overlap before merging trends
+            const combinedDates = combined.monthly_trend.map((x: any) => x.month);
+            const incomingDates = (data.monthly_trend || []).map((x: any) => x.month);
+            const overlap = combinedDates.filter((d: string) => incomingDates.includes(d));
+            
+            if (overlap.length > 0) {
+                const msg = `Cannot combine files: Date overlap detected in ${overlap.join(', ')}. Use 'Blended' strategy or remove overlapping files.`;
+                logger.error(msg, 'BudgetStore');
+                throw new Error(msg);
+            }
 
             combined.monthly_trend = this.mergeHistoryArrays(combined.monthly_trend, data.monthly_trend || []);
 
@@ -309,7 +337,6 @@ export class BudgetStore {
             Object.entries(data.category_breakdown || {}).forEach(([key, val]) => {
                 if (blended.category_breakdown[key] === undefined) {
                     blended.category_breakdown[key] = Number(val);
-                    blended.total_expenses += Number(val);
                 }
             });
 
@@ -347,37 +374,65 @@ export class BudgetStore {
             });
         }
 
+        // Recalculate total expenses from category breakdown (Source of Truth)
+        blended.total_expenses = Object.values(blended.category_breakdown || {})
+            .reduce((sum: number, val: any) => sum + Number(val), 0);
+
         this.recalculateMonthlyTrend(blended);
         return blended;
     }
 
     // Helper to calculate merged metrics based on strategy
-    private calculateMetrics(files: UploadedFile[], strategy: MergeStrategy): BudgetMetrics {
-        if (files.length === 0) return initialState.metrics;
+    private calculateMetrics(files: UploadedFile[], strategy: MergeStrategy, overrideHorizon?: number): BudgetMetrics {
+        let result = initialState.metrics;
 
         try {
-            // Strategy: Latest (Default)
-            if (strategy === 'latest' || files.length === 1) {
-                return files[files.length - 1].data;
-            }
-
-            // Strategy: Full Combine (Additive)
-            if (strategy === 'combined') {
-                return this.mergeCombinedStrategy(files);
-            }
-
-            // Strategy: Blended (Fill Gaps)
-            if (strategy === 'blended') {
-                return this.mergeBlendedStrategy(files);
+            if (files.length === 0) {
+                result = initialState.metrics;
+            } else if (strategy === 'latest' || files.length === 1) {
+                result = files[files.length - 1].data;
+            } else if (strategy === 'combined') {
+                result = this.mergeCombinedStrategy(files);
+            } else if (strategy === 'blended') {
+                // For blended strategy, ensure files are processed chronologically (oldest first)
+                const sortedFiles = [...files].sort((a, b) => {
+                    const monthA = a.data.monthly_trend?.[0]?.sort_key || '';
+                    const monthB = b.data.monthly_trend?.[0]?.sort_key || '';
+                    return monthA.localeCompare(monthB);
+                });
+                result = this.mergeBlendedStrategy(sortedFiles);
             }
         } catch (e) {
             const error = e instanceof Error ? e : new Error(String(e));
             logger.error('Error calculating metrics', 'BudgetStore', error);
-            // Fallback to latest
-            return files[files.length - 1].data;
+            // Fallback to latest if available
+            if (files.length > 0) {
+                result = files[files.length - 1].data;
+            }
         }
 
-        return files[files.length - 1].data;
+        // Recalculate Forecast Summary based on merged trend
+        if (result.monthly_trend && result.monthly_trend.length > 0) {
+            const horizon = overrideHorizon ?? (this.store.state.settings?.forecast_horizon || 6);
+            result.forecast_summary = ForecastService.generateSummary(result.monthly_trend, horizon);
+        }
+
+        this.validateMetrics(result);
+        return result;
+    }
+
+    private validateMetrics(metrics: BudgetMetrics) {
+        const categorySum = Object.values(metrics.category_breakdown || {})
+            .reduce((sum, val) => sum + Number(val), 0);
+
+        const tolerance = 0.1; // Allow small float error
+        if (Math.abs(categorySum - metrics.total_expenses) > tolerance) {
+            logger.warn('Metrics validation failed: Total Expenses does not match Category Breakdown sum', 'BudgetStore', {
+                categorySum,
+                total_expenses: metrics.total_expenses,
+                diff: categorySum - metrics.total_expenses
+            });
+        }
     }
 
     setMergeStrategy(strategy: MergeStrategy) {
@@ -441,7 +496,9 @@ export class BudgetStore {
             // Nested Arrays/Objects
             monthly_trend: (raw.monthly_trend || []).map(item => ({
                 ...item,
-                amount: Number(item.amount || 0)
+                amount: Number(item.amount || 0),
+                is_forecast: !!item.is_forecast,
+                sort_key: item.sort_key || ""
             })),
 
             category_history: {},
@@ -461,11 +518,19 @@ export class BudgetStore {
                 amount: Number(s.amount || 0)
             })),
 
+            timeline: (raw.timeline || []).map(t => ({
+                ...t,
+                amount: Number(t.amount || 0)
+            })),
+
             anomalies: (raw.anomalies || []).map(a => ({
                 ...a,
                 amount: Number(a.amount || 0),
                 average: Number(a.average || 0)
-            }))
+            })),
+            
+            // Pass through Forecast Summary if present
+            forecast_summary: raw.forecast_summary
         };
 
         // Populate Dictionaries
@@ -488,7 +553,8 @@ export class BudgetStore {
                     target[k] = list.map((item: HistoryItem) => ({
                         ...item,
                         amount: Number(item.amount || 0),
-                        is_forecast: !!item.is_forecast // Force boolean
+                        is_forecast: !!item.is_forecast, // Force boolean
+                        sort_key: item.sort_key || ""
                     }));
                 }
             });
@@ -497,12 +563,8 @@ export class BudgetStore {
         sanitizeHistory(raw.category_history, sanitizedMetrics.category_history);
         sanitizeHistory(raw.project_history, sanitizedMetrics.project_history);
 
-        // Sanitize Monthly Trend too
-        sanitizedMetrics.monthly_trend = (raw.monthly_trend || []).map((item: any) => ({
-            ...item,
-            amount: Number(item.amount || 0),
-            is_forecast: !!item.is_forecast
-        }));
+        // Sanitize Monthly Trend too (Redundant but safe if raw format changes, handled above in initialization)
+        // sanitizedMetrics.monthly_trend = ... (Already done)
 
         // Populate Granular Merchant Maps
         const sanitizeDoubleDict = (source: MerchantMap | undefined, target: MerchantMap) => {
@@ -552,7 +614,7 @@ export class BudgetStore {
         });
     }
 
-    setViewMode(mode: 'category' | 'project' | 'forecast' | 'simulator' | 'chat' | 'lifecycle') {
+    setViewMode(mode: 'category' | 'project' | 'forecast' | 'chat' | 'lifecycle' | 'timeline') {
         this.store.setState((state) => ({
             ...state,
             viewMode: mode
@@ -596,16 +658,6 @@ export class BudgetStore {
         } catch (error) {
             const errorObj = error instanceof Error ? error : new Error(String(error));
             logger.error('Failed to delete rule', 'BudgetStore', errorObj);
-        }
-    }
-
-    async simulateBudget(adjustments: Array<{ category: string; percentage: number }>) {
-        this.store.setState((state) => ({ ...state, isLoading: true, error: null }));
-        try {
-            const result = await budgetService.simulateBudget(adjustments);
-            this.store.setState((state) => ({ ...state, simulation: result, isLoading: false }));
-        } catch (error) {
-            this.store.setState((state) => ({ ...state, error: (error as Error).message, isLoading: false }));
         }
     }
 
@@ -684,23 +736,29 @@ export class BudgetStore {
             if (response.ok) {
                 const data = await response.json();
                 // Backend now returns { settings: {...}, auth_config: {...} }
-                const settings = data.settings || data;
+                const incomingSettings = data.settings || data;
 
-                this.store.setState((state) => ({ ...state, settings }));
+                this.store.setState((state) => ({
+                    ...state,
+                    settings: {
+                        ...state.settings,
+                        ...incomingSettings
+                    }
+                }));
 
                 // Sync properties
-                if (settings.merge_strategy) {
+                if (incomingSettings.merge_strategy) {
                     this.store.setState((state) => ({
                         ...state,
-                        mergeStrategy: settings.merge_strategy,
+                        mergeStrategy: incomingSettings.merge_strategy,
                         // Re-calc metrics if strategy changed? Yes.
-                        metrics: this.calculateMetrics(state.uploadedFiles, settings.merge_strategy)
+                        metrics: this.calculateMetrics(state.uploadedFiles, incomingSettings.merge_strategy)
                     }));
                 }
 
                 // Sync budget limit with persisted setting if 0
                 if (this.store.state.budgetLimit === 0) {
-                    this.store.setState((state) => ({ ...state, budgetLimit: settings.budget_threshold }));
+                    this.store.setState((state) => ({ ...state, budgetLimit: incomingSettings.budget_threshold }));
                 }
             }
         } catch (e) {
@@ -719,12 +777,21 @@ export class BudgetStore {
 
             if (response.ok) {
                 const newSettings = await response.json();
-                this.store.setState((state) => ({ ...state, settings: newSettings }));
+                this.store.setState((state) => {
+                    const updatedState = { ...state, settings: newSettings };
+                    
+                    // Side Effects
+                    if (update.budget_threshold) {
+                        updatedState.budgetLimit = update.budget_threshold;
+                    }
 
-                // Effective Side Effects
-                if (update.budget_threshold) {
-                    this.store.setState(s => ({ ...s, budgetLimit: update.budget_threshold! }));
-                }
+                    // Recalculate metrics if forecast horizon changed
+                    if (update.forecast_horizon) {
+                        updatedState.metrics = this.calculateMetrics(state.uploadedFiles, state.mergeStrategy, update.forecast_horizon);
+                    }
+                    
+                    return updatedState;
+                });
             }
         } catch (e) {
             const error = e instanceof Error ? e : new Error(String(e));

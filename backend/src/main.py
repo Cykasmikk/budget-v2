@@ -8,7 +8,6 @@ from src.interface.router import router as api_router
 from src.interface.export_router import router as export_router
 from src.interface.query_router import router as query_router
 from src.interface.rule_router import router as rule_router
-from src.interface.simulation_router import router as simulation_router
 from src.interface.middleware import LoggingMiddleware
 
 
@@ -108,7 +107,6 @@ app.include_router(api_router, prefix="/api/v1", dependencies=[RequireAuth])
 app.include_router(export_router, prefix="/api/v1", dependencies=[RequireAuth])
 app.include_router(query_router, prefix="/api/v1", dependencies=[RequireAuth])
 app.include_router(rule_router, prefix="/api/v1", dependencies=[RequireAuth])
-app.include_router(simulation_router, prefix="/api/v1", dependencies=[RequireAuth])
 app.include_router(settings_router, prefix="/api/v1", dependencies=[RequireAuth])
 app.include_router(ai_chat_router, prefix="/api/v1", dependencies=[RequireAuth])
 

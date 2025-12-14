@@ -4,11 +4,15 @@ from src.application.analyze_budget import AnalyzeBudgetUseCase
 from src.infrastructure.repository import SQLBudgetRepository
 from src.infrastructure.excel_parser import PandasExcelParser
 from src.infrastructure.db import get_session
+from src.infrastructure.models import TenantModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List, Dict, Any
-from src.interface.dependencies import get_current_user
+from src.interface.dependencies import get_current_user, get_db
 from src.interface.envelope import ResponseEnvelope
 from src.domain.analysis_models import BudgetAnalysisResult
+from src.application.audit_service import AuditService
+from src.domain.user import User
 import structlog
 
 router = APIRouter()
@@ -18,17 +22,25 @@ async def get_upload_use_case(session: AsyncSession = Depends(get_session)):
     repo = SQLBudgetRepository(session)
     parser = PandasExcelParser()
     analyzer = AnalyzeBudgetUseCase(repo)
-    return UploadBudgetUseCase(repo, parser, analyzer)
+    audit_service = AuditService(session)
+    return UploadBudgetUseCase(repo, parser, analyzer, audit_service)
 
 async def get_analyze_use_case(session: AsyncSession = Depends(get_session)):
     repo = SQLBudgetRepository(session)
     return AnalyzeBudgetUseCase(repo)
 
+async def get_tenant_settings(db: AsyncSession, tenant_id: str) -> Dict[str, Any]:
+    stmt = select(TenantModel).where(TenantModel.id == tenant_id)
+    result = await db.execute(stmt)
+    tenant = result.scalar_one_or_none()
+    return tenant.settings if tenant else {}
+
 @router.post("/upload", response_model=ResponseEnvelope[BudgetAnalysisResult])
 async def upload_budget(
     files: List[UploadFile] = File(...),
     use_case: UploadBudgetUseCase = Depends(get_upload_use_case),
-    user: dict = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     results = []
     try:
@@ -51,7 +63,9 @@ async def upload_budget(
 @router.get("/analysis", response_model=ResponseEnvelope[BudgetAnalysisResult])
 async def analyze_budget(
     use_case: AnalyzeBudgetUseCase = Depends(get_analyze_use_case),
-    user: dict = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    result = await use_case.execute()
+    settings = await get_tenant_settings(db, user.tenant_id)
+    result = await use_case.execute(settings=settings)
     return ResponseEnvelope.success(data=result)

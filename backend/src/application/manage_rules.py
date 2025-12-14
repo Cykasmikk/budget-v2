@@ -1,14 +1,16 @@
-from typing import List
+from typing import List, Optional
 from src.domain.repository import RuleRepository
 from src.domain.rule import Rule
+from src.application.audit_service import AuditService
 
 class ManageRulesUseCase:
     """
     Use case for managing categorization rules.
     Allows creating, listing, and deleting rules.
     """
-    def __init__(self, repo: RuleRepository):
+    def __init__(self, repo: RuleRepository, audit_service: Optional[AuditService] = None):
         self.repo = repo
+        self.audit_service = audit_service
 
     async def get_rules(self) -> List[Rule]:
         """
@@ -31,7 +33,17 @@ class ManageRulesUseCase:
             Rule: The created rule entity.
         """
         rule = Rule(pattern=pattern, category=category)
-        return await self.repo.add(rule)
+        created_rule = await self.repo.add(rule)
+        
+        if self.audit_service:
+            await self.audit_service.log_action(
+                action="CREATE",
+                resource="RULE",
+                resource_id=str(created_rule.id),
+                details={"pattern": pattern, "category": category}
+            )
+            
+        return created_rule
 
     async def delete_rule(self, rule_id: int):
         """
@@ -41,3 +53,11 @@ class ManageRulesUseCase:
             rule_id (int): The unique identifier of the rule to delete.
         """
         await self.repo.delete(rule_id)
+        
+        if self.audit_service:
+            await self.audit_service.log_action(
+                action="DELETE",
+                resource="RULE",
+                resource_id=str(rule_id)
+            )
+

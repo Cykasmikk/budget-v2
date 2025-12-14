@@ -1,12 +1,12 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { StoreController } from '../store/controller';
 import { budgetStore } from '../store/budget-store';
 import { authStore } from '../store/auth-store';
+import { uiStore } from '../store/ui-store';
 
 import '../components/layout/app-shell';
 import '../components/widgets/analysis-card';
-import '../components/widgets/simulation-card';
 import '../views/files-view';
 import '../views/settings-view';
 
@@ -120,38 +120,36 @@ export class DashboardView extends LitElement {
   // @ts-ignore
   private authController = new StoreController(this, authStore);
 
-  @state()
-  private activeTab: string = 'dashboard';
+  // Subscribe to UI store for navigation state
+  // @ts-ignore
+  private uiController = new StoreController(this, uiStore);
 
   connectedCallback() {
     super.connectedCallback();
     budgetStore.fetchRules();
 
-    // Auto-load sample data ONLY if we haven't initialized before
-    const hasInitialized = localStorage.getItem('budget_demo_state');
-
-    if (!hasInitialized && Object.keys(budgetStore.state.metrics.category_breakdown).length === 0) {
-      budgetStore.loadSampleData();
-    }
+    // Note: Sample data loading removed - users should upload their own data
+    // Sample data can still be loaded manually via the app shell menu if needed for demos
   }
 
   private handleNavChange(e: CustomEvent) {
-    this.activeTab = e.detail.tab;
+    uiStore.setActiveTab(e.detail.tab);
   }
 
   render() {
     const state = budgetStore.state;
     const authState = authStore.state;
+    const activeTab = uiStore.state.activeTab;
 
     return html`
       <app-shell
         .metrics=${state.metrics}
         .budgetLimit=${state.budgetLimit}
         .user=${authState.user}
-        .activeTab=${this.activeTab}
+        .activeTab=${activeTab}
         @nav-change=${this.handleNavChange}
       >
-        ${this.activeTab === 'dashboard' ? html`
+        ${activeTab === 'dashboard' ? html`
           <div class="grid-dashboard">
             <!-- Main Analysis Console (Span 12) -->
             <div class="span-12">
@@ -159,15 +157,14 @@ export class DashboardView extends LitElement {
                 .metrics=${state.metrics}
                 .viewMode=${state.viewMode}
                 .budgetLimit=${state.budgetLimit}
-                .simulation=${state.simulation}
                 .isLoading=${state.isLoading}
               ></analysis-card>
             </div>
           </div>
         ` : ''}
 
-        ${this.activeTab === 'files' ? html`<files-view></files-view>` : ''}
-        ${this.activeTab === 'settings' ? html`<settings-view></settings-view>` : ''}
+        ${activeTab === 'files' ? html`<files-view></files-view>` : ''}
+        ${activeTab === 'settings' ? html`<settings-view></settings-view>` : ''}
       </app-shell>
     `;
   }
