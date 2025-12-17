@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+coverage
+.vscode
+.idea
+npm-debug.log
+yarn-error.log
+.DS_Store
+tests
+junit.xml
+test-results

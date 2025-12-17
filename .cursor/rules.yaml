@@ -1,0 +1,132 @@
+project:
+  name: Enterprise Cloud Native Application
+  description: >
+    A high-compliance, autonomous enterprise system adhering to Clean Architecture, 
+    strict security gates, and a Red-Green-Refactor TDD workflow.
+  folders:
+    backend:
+      description: >
+        Hexagonal Architecture (Domain, Application, Infra, Interface). 
+        Python 3.12+ with strict typing and Pydantic V2 validation.
+    frontend:
+      description: >
+        MVVM Pattern using Lit (Web Components) and TypeScript 5.4+. 
+        Focus on Accessibility (WCAG AA) and "Metallic/Minimalist" design.
+    infrastructure:
+      description: >
+        GitOps-driven deployment manifests (Kustomize/ArgoCD) and 
+        secure container specifications.
+
+rules:
+  # -------------------------------------------------------------------------
+  # 0. UNIVERSAL SECURITY & COMPLIANCE (The "Security Gates")
+  # -------------------------------------------------------------------------
+  - match: "**/*"
+    name: "security-zero-trust"
+    description: >
+      CRITICAL SECURITY GATES:
+      1. NO Hardcoded Secrets: Never commit keys, tokens, or passwords. Use `os.getenv` or Secret Stores.
+      2. Least Privilege: All processes must run as non-root.
+      3. Input Sanitization: All external inputs must be validated against strict schemas before processing.
+
+  - match: "**/*"
+    name: "git-conventions"
+    description: >
+      Commit messages must follow Conventional Commits standard (feat, fix, chore, refactor, docs).
+      Example: "feat(auth): implement saml 2.0 flow" or "fix(ui): resolve z-index overlap".
+
+  # -------------------------------------------------------------------------
+  # 1. CORE CODING PHILOSOPHY & WORKFLOW
+  # -------------------------------------------------------------------------
+  - match: "**/*.{py,ts,js,tsx}"
+    name: "tdd-workflow"
+    description: >
+      Follow the Red-Green-Refactor TDD Cycle:
+      1. Red: Write a failing test defining the interface/behavior.
+      2. Green: Write minimal implementation to pass the test.
+      3. Refactor: Optimize for readability, complexity, and type safety.
+      4. Never write implementation code without a corresponding test case.
+
+  - match: "**/*.{py,ts,js}"
+    name: "clean-code-complexity"
+    description: >
+      1. Cyclomatic Complexity: Functions must not exceed a complexity score of 10.
+      2. Single Responsibility: Break large functions/classes into smaller units.
+      3. DRY (Don't Repeat Yourself): Abstract common logic into shared utilities/services.
+
+  # -------------------------------------------------------------------------
+  # 2. BACKEND ARCHITECTURE (Python/FastAPI)
+  # -------------------------------------------------------------------------
+  - match: "**/*.py"
+    name: "python-standards"
+    description: >
+      1. Style: PEP 8 compliant, formatted with `black` (line length 88).
+      2. Linting: Must pass `ruff check`.
+      3. Typing: Strict Type Hints required for all function signatures and return types (No `Any`).
+      4. Naming: PascalCase for Classes, snake_case for functions/variables.
+      5. Documentation: Google Style Docstrings required for all public modules/classes/functions.
+
+  - match: "**/*.py"
+    name: "backend-observability"
+    description: >
+      1. Logging: Use `structlog` (JSON format) ONLY. `print()` and standard `logging` are FORBIDDEN.
+      2. Exceptions: Use centralized exception handling. Map domain errors to standard HTTP Status Codes (400, 401, 403, 404, 500).
+      3. Do not leak stack traces to the client in production.
+
+  - match: "backend/api/**/*.py"
+    name: "api-performance-io"
+    description: >
+      1. Asynchronous I/O: All Network, DB, and File operations must use `await` (non-blocking).
+      2. Response Envelope: All APIs must return a standardized JSON envelope: `{ "data": {...}, "meta": {...}, "errors": [...] }`.
+
+  - match: "backend/schemas.py"
+    name: "data-validation"
+    description: >
+      Use Pydantic V2 in Strict Mode. Define explicit field types, default values, and descriptive docstrings for automated Swagger/OpenAPI generation.
+
+  # -------------------------------------------------------------------------
+  # 3. FRONTEND ARCHITECTURE (Lit/TypeScript)
+  # -------------------------------------------------------------------------
+  - match: "frontend/**/*.ts"
+    name: "frontend-mvvm"
+    description: >
+      1. Architecture: Strict MVVM (Model-View-ViewModel). Logic resides in Controllers/Classes, not the View.
+      2. State: Use Signal-based stores (TanStack Store) or `st.session_state` (if Streamlit).
+      3. Performance: Use `requestAnimationFrame` for animations. Cache expensive operations (`st.cache_data`).
+      4. Components: Shadow DOM required for encapsulation.
+
+  - match: "frontend/**/*.ts"
+    name: "ui-ux-accessibility"
+    description: >
+      1. Accessibility: Semantic HTML and ARIA labels are mandatory. Must meet WCAG AA standards.
+      2. Responsiveness: CSS Grid must handle layouts from Mobile (320px) to 4K.
+      3. Aesthetics: "Metallic/Minimalist" design system.
+
+  # -------------------------------------------------------------------------
+  # 4. INFRASTRUCTURE & DEVOPS
+  # -------------------------------------------------------------------------
+  - match: "Dockerfile"
+    name: "container-security"
+    description: >
+      1. Base Image: Use `gcr.io/distroless` or `alpine` for minimized attack surface.
+      2. User: Must specify `USER nonroot` at the end of the file.
+      3. Multi-stage: Use multi-stage builds to keep final images small and clean.
+
+  - match: "kustomize/**/*.yaml"
+    name: "k8s-manifests"
+    description: >
+      1. Resources: explicitly define `requests` and `limits` for CPU and Memory to prevent neighbor noise.
+      2. Probes: Always specify `livenessProbe` and `readinessProbe`.
+      3. Security Context: Pods must set `runAsNonRoot: true`.
+
+  # -------------------------------------------------------------------------
+  # 5. DOCUMENTATION
+  # -------------------------------------------------------------------------
+  - match: "README.md"
+    name: "documentation-standards"
+    description: >
+      Every service/folder must have a README containing:
+      1. Purpose of the module.
+      2. Key APIs/Ports.
+      3. Required Environment Variables.
+      4. Usage/Run examples.

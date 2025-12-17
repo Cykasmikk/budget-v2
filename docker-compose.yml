@@ -1,0 +1,98 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://budget_user:budget_password@postgres/budget_db
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GUEST_RATE_LIMIT=0
+    networks:
+      - budget-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=budget_user
+      - POSTGRES_PASSWORD=budget_password
+      - POSTGRES_DB=budget_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - budget-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U budget_user -d budget_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  neo4j:
+    image: neo4j:5.19-community
+    environment:
+      - NEO4J_AUTH=neo4j/budget_graph_password
+      - NEO4J_dbms_memory_pagecache_size=512M
+      - NEO4J_dbms_memory_heap_initial__size=512M
+      - NEO4J_dbms_memory_heap_max__size=512M
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - budget-net
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      - VITE_API_TARGET=http://backend:8000
+    ports:
+      - "3000:8080"
+    volumes:
+      - ./frontend/src:/app/src
+    networks:
+      - budget-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+volumes:
+  postgres_data:
+  neo4j_data:
+
+
+networks:
+  budget-net:
+    driver: bridge

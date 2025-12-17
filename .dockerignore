@@ -1,0 +1,58 @@
+# Core
+.git
+.gitignore
+.dockerignore
+.env
+*.env
+docker-compose.yml
+README.md
+CLAUDE.md
+GEMINI.md
+*.md
+
+# IDE
+.idea
+.vscode
+.cursor
+.claude
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache
+htmlcov/
+.coverage
+.tox/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+coverage/
+
+# Temporary / Test Data
+*.log
+tmp/
+*.xlsx
+*.csv
+scripts/
+tests/
+alembic/
+check_overlap.py
+debug_*.py
+generate_*.py
+sample_*.xlsx
+
+# Kubernetes
+k8s/
