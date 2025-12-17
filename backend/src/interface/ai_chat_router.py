@@ -147,12 +147,25 @@ async def parse_simulation_scenario(
 async def plan_simulation_scenario(
     request: SimulatorRequest,
     planner: ScenarioPlanner = Depends(get_scenario_planner),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
 ):
     """
     Decomposes a scenario into a multi-step plan.
     """
-    plan = await planner.generate_plan(request.scenario)
+    # Cat 4.7: Entity Resolution Context
+    # Fetch distinct entities (Categories, Projects, Merchants) to help the LLM/Planner map acronyms
+    from src.infrastructure.repository import SQLBudgetRepository
+    import structlog
+    
+    logger = structlog.get_logger()
+    repo = SQLBudgetRepository(session)
+    
+    # Efficient fetch of unique names only
+    all_entities = await repo.get_distinct_entities()
+    logger.info("simulator_entity_context_fetched", count=len(all_entities))
+
+    plan = await planner.generate_plan(request.scenario, context_entities=all_entities)
     
     if not plan:
         raise HTTPException(status_code=422, detail="Failed to generate plan")

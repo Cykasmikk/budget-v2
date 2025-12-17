@@ -325,6 +325,30 @@ export class AIChat extends BaseComponent {
           opacity: 1;
         }
       }
+
+      .explanation-details {
+        margin-top: 0.75rem;
+      }
+      
+      .explanation-summary {
+        cursor: pointer;
+        list-style: none; /* Hide default arrow */
+        opacity: 0.8;
+        transition: opacity 0.2s;
+        display: inline-block; /* Minimal width */
+      }
+      
+      .explanation-summary::-webkit-details-marker {
+        display: none;
+      }
+      
+      .explanation-summary:hover {
+        opacity: 1.0;
+      }
+      
+      .explanation-panel {
+        margin-top: 0.5rem !important; /* Override current margin */
+      }
     `
   ];
 
@@ -524,10 +548,14 @@ export class AIChat extends BaseComponent {
         : msg.content}
               
               ${msg.explanation ? html`
-                <div class="explanation-panel">
-                  <div class="explanation-label">⚡ Symbolic Trace</div>
-                  ${this.renderExplanationContent(msg.explanation)}
-                </div>
+                <details class="explanation-details">
+                  <summary class="explanation-summary">
+                    <span class="explanation-label">⚡ Verification Details</span>
+                  </summary>
+                  <div class="explanation-panel">
+                    ${this.renderExplanationContent(msg.explanation)}
+                  </div>
+                </details>
               ` : ''}
             </div>
           </div>

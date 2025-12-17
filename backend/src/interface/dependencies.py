@@ -63,7 +63,8 @@ def get_simulator_ai() -> SimulatorAI:
 @lru_cache()
 def get_scenario_planner() -> ScenarioPlanner:
     sim_ai = get_simulator_ai()
-    return ScenarioPlanner(simulator_ai=sim_ai)
+    emb = get_embedding_service()
+    return ScenarioPlanner(simulator_ai=sim_ai, embedding_service=emb)
 
 @lru_cache()
 def get_calibration_service() -> CalibrationService:

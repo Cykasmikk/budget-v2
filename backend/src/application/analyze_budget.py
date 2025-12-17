@@ -16,6 +16,7 @@ from src.domain.analysis_models import (
     TimelineItem
 )
 import structlog
+from src.domain.services.merchant_normalization import MerchantNormalizationService
 
 logger = structlog.get_logger()
 
@@ -186,12 +187,18 @@ class AnalyzeBudgetUseCase:
                 type=tx_type
             ))
 
+            # Wrapper for validation
+            from src.domain.services.merchant_normalization import MerchantNormalizationService
+            
             # Continue with breakdown logic for EXPENSES only
             if e.category not in exclude_categories:
                 amt = abs(e.amount)
+                # Normalize vendor name for consistent aggregation
+                vendor_name = MerchantNormalizationService.normalize(e.description)
+                
                 category_breakdown[e.category] = category_breakdown.get(e.category, Decimal("0")) + amt
                 project_breakdown[e.project] = project_breakdown.get(e.project, Decimal("0")) + amt
-                merchant_breakdown[e.description] = merchant_breakdown.get(e.description, Decimal("0")) + amt
+                merchant_breakdown[vendor_name] = merchant_breakdown.get(vendor_name, Decimal("0")) + amt
 
         top_merchants = dict(sorted(merchant_breakdown.items(), key=lambda item: item[1], reverse=True)[:5])
 
@@ -252,13 +259,15 @@ class AnalyzeBudgetUseCase:
 
         for e in expense_entries:
             amt = abs(e.amount)
+            vendor_name = MerchantNormalizationService.normalize(e.description)
+            
             if e.category not in category_merchants_map:
                 category_merchants_map[e.category] = {}
-            category_merchants_map[e.category][e.description] = category_merchants_map[e.category].get(e.description, Decimal("0")) + amt
+            category_merchants_map[e.category][vendor_name] = category_merchants_map[e.category].get(vendor_name, Decimal("0")) + amt
 
             if e.project not in project_merchants_map:
                 project_merchants_map[e.project] = {}
-            project_merchants_map[e.project][e.description] = project_merchants_map[e.project].get(e.description, Decimal("0")) + amt
+            project_merchants_map[e.project][vendor_name] = project_merchants_map[e.project].get(vendor_name, Decimal("0")) + amt
 
         category_merchants = {
             cat: dict(sorted(merch_map.items(), key=lambda item: item[1], reverse=True)[:10])

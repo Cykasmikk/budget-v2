@@ -25,6 +25,8 @@ class SimulatorAction(BaseModel):
     amount: float = Field(..., description="The numeric value of the modification")
     unit: Literal["percent", "absolute"] = Field(..., description="The unit of the amount")
     explanation: str = Field(..., description="Reasoning for the action")
+    resolution_method: Literal["ai_generated", "exact", "fuzzy", "semantic", "acronym"] = Field("ai_generated", description="Method used to resolve the target")
+    confidence: Optional[float] = Field(None, description="Confidence score of the resolution (0.0-1.0)")
 
 
 class SimulatorAI:

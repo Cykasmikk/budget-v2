@@ -58,7 +58,15 @@ class GeminiAdapter(LLMProvider):
             loop = asyncio.get_running_loop()
             
             response = await loop.run_in_executor(None, self.model.generate_content, full_prompt)
-            return response.text
+            
+            try:
+                text = response.text
+                logger.info("gemini_response_generated", length=len(text))
+                return text
+            except ValueError:
+                # Occurs if response was blocked by safety filters
+                logger.warning("gemini_response_blocked", feedback=str(response.prompt_feedback))
+                return "I'm sorry, I cannot answer that due to safety guidelines."
             
         except Exception as e:
             logger.error("gemini_generation_failed", error=str(e))

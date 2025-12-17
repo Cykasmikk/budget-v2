@@ -72,6 +72,37 @@ class SQLBudgetRepository(BaseRepository[BudgetModel], BudgetRepository):
             for m in models
         ]
 
+    async def get_distinct_entities(self) -> List[str]:
+        """
+        Retrieves distinct categories, projects, and NORMALIZED merchant names for entity resolution.
+        """
+        from src.domain.services.merchant_normalization import MerchantNormalizationService
+        
+        tenant_id = self._get_tenant_id()
+        entities = set()
+        
+        # 1. Categories
+        stmt_cat = select(BudgetModel.category).where(BudgetModel.tenant_id == tenant_id).distinct()
+        res_cat = await self.session.execute(stmt_cat)
+        entities.update(filter(None, res_cat.scalars().all()))
+        
+        # 2. Projects
+        stmt_proj = select(BudgetModel.project).where(BudgetModel.tenant_id == tenant_id).distinct()
+        res_proj = await self.session.execute(stmt_proj)
+        entities.update(filter(None, res_proj.scalars().all()))
+        
+        # 3. Merchants (Normalized)
+        # Fetch distinct raw descriptions first
+        stmt_desc = select(BudgetModel.description).where(BudgetModel.tenant_id == tenant_id).distinct()
+        res_desc = await self.session.execute(stmt_desc)
+        raw_descs = filter(None, res_desc.scalars().all())
+        
+        # Normalize them to match what the Analysis/Simualtor sees
+        normalized_merchants = {MerchantNormalizationService.normalize(d) for d in raw_descs}
+        entities.update(normalized_merchants)
+        
+        return list(entities)
+
 class SQLRuleRepository(BaseRepository[RuleModel], RuleRepository):
     """
     SQLAlchemy implementation of the RuleRepository.
